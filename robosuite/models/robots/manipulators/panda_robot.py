@@ -31,7 +31,8 @@ class Panda(ManipulatorModel):
 
     @property
     def init_qpos(self):
-        return np.array([0, np.pi / 16.0, 0.00, -np.pi / 2.0 - np.pi / 3.0, 0.00, np.pi - 0.2, np.pi/4])
+        #return np.array([0, np.pi / 16.0, 0.00, -np.pi / 2.0 - np.pi / 3.0, 0.00, np.pi - 0.2, np.pi/4])
+        return np.array([-0.102, -0.116, -0.364, -2.68, -0.08, 2.58, -0.396])
 
     @property
     def base_xpos_offset(self):

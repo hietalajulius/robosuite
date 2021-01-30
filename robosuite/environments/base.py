@@ -370,12 +370,25 @@ class MujocoEnv(metaclass=EnvMeta):
             self.sim.step()
             self._update_observables()
             policy_step = False
+        print("Values control loop")
+        #self.log_joint_vals()
+        #self.log_site_vals()
 
         # Note: this is done all at once to avoid floating point inaccuracies
         self.cur_time += self.control_timestep
 
         reward, done, info = self._post_action(action)
         return self._get_observations(), reward, done, info
+    
+    def log_site_vals(self):
+        print("Site pos", self.sim.data.get_site_xpos("gripper0_grip_site").copy())
+
+    def log_joint_vals(self):
+        joint_names = np.array(
+            ["robot0_joint" + str(name_idx) for name_idx in range(1, 8)])
+        for joint_name in joint_names:
+            print(f"{joint_name} Joint val {self.sim.data.get_joint_qpos(joint_name)}")
+        print("------------------------------")
 
     def _pre_action(self, action, policy_step=False):
         """

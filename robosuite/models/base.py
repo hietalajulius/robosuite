@@ -289,6 +289,7 @@ class MujocoModel(object):
             visible (bool): If True, will visualize model sites. Else, will hide the sites.
         """
         # Loop through all visualization geoms and set their alpha values appropriately
+        return
         for vis_g in self.sites:
             vis_g_id = sim.model.site_name2id(vis_g)
             if (visible and sim.model.site_rgba[vis_g_id][3] < 0) or \

@@ -248,6 +248,9 @@ class SingleArm(Manipulator):
 
         # Update the controller goal if this is a new policy step
         if policy_step:
+            #print("Policy step")
+            #override = np.zeros(7)
+            #self.controller.set_goal(arm_action, set_qpos=arm_action)
             self.controller.set_goal(arm_action)
 
         # Now run the controller for a step
