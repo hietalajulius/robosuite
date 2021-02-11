@@ -48,7 +48,7 @@ class Cloth(SingleArmEnv):
         single_object_mode=0,
         object_type=None,
         has_renderer=False,
-        has_offscreen_renderer=True,
+        has_offscreen_renderer=False,
         render_camera="frontview",
         render_collision_mesh=False,
         render_visual_mesh=True,

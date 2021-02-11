@@ -26,7 +26,7 @@ if __name__ == "__main__":
     # initialize the task
     env = suite.make(
         **options,
-        has_renderer=True,
+        has_renderer=False,
         has_offscreen_renderer=False,
         ignore_done=True,
         use_camera_obs=False,
@@ -34,7 +34,7 @@ if __name__ == "__main__":
         constraints=task_definitions.constraints['diagonal_franka_1']
     )
     env.reset()
-    env.viewer.set_camera(camera_id=0)
+    #env.viewer.set_camera(camera_id=0)
 
     # Get action limits
     low, high = env.action_spec

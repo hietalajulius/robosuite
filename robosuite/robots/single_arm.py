@@ -101,7 +101,6 @@ class SingleArm(Manipulator):
         """
         Loads controller to be used for dynamic trajectories
         """
-        print("LÖAD CONTR")
         # First, load the default controller if none is specified
         if not self.controller_config:
             # Need to update default for a single agent
