@@ -1,5 +1,6 @@
 from robosuite.controllers import load_controller_config
 from robosuite.utils.input_utils import *
+from gym.envs.robotics import task_definitions
 
 
 if __name__ == "__main__":
@@ -12,43 +13,15 @@ if __name__ == "__main__":
     print(suite.__logo__)
 
     # Choose environment and add it to options
-    options["env_name"] = "PickPlace" #choose_environment()
-    print("env name chosen:", options["env_name"])
+    options["env_name"] = "Cloth" 
+    options["robots"] = "Panda"
+    controller_name = "OSC_POSE" #choose_controller()
+    controller_name = "IK_POSE"
 
-    # If a multi-arm environment has been chosen, choose configuration and appropriate robot(s)
-    if "TwoArm" in options["env_name"]:
-        # Choose env config and add it to options
-        options["env_configuration"] = choose_multi_arm_config()
-
-        # If chosen configuration was bimanual, the corresponding robot must be Baxter. Else, have user choose robots
-        if options["env_configuration"] == 'bimanual':
-            options["robots"] = 'Baxter'
-        else:
-            options["robots"] = []
-
-            # Have user choose two robots
-            print("A multiple single-arm configuration was chosen.\n")
-
-            for i in range(2):
-                print("Please choose Robot {}...\n".format(i))
-                options["robots"].append(choose_robots(exclude_bimanual=True))
-
-    # Else, we simply choose a single (single-armed) robot to instantiate in the environment
-    else:
-        options["robots"] = "Panda" #choose_robots(exclude_bimanual=True)
-        print("robot chosen:", options["robots"])
-
-    # Choose controller
-    controller_name = "IK_POSE" #choose_controller()
-    print("robot chosen:", controller_name)
-
-    # Load the desired controller
     options["controller_configs"] = load_controller_config(
         default_controller=controller_name)
-
-    # Help message to user
-    print()
-    print("Press \"H\" to show the viewer control panel.")
+    options["controller_configs"]["interpolation"] = "linear"
+    print("KÖNFIG", options["controller_configs"])
 
     # initialize the task
     env = suite.make(
@@ -58,6 +31,7 @@ if __name__ == "__main__":
         ignore_done=True,
         use_camera_obs=False,
         control_freq=10,
+        constraints=task_definitions.constraints['diagonal_franka_1']
     )
     env.reset()
     env.viewer.set_camera(camera_id=0)
@@ -90,17 +64,20 @@ if __name__ == "__main__":
         for s in range(1,split+1):
             modded_increases.append([x / s for x in incr])
         
-    print("modded", modded_increases)
+    #print("modded", modded_increases)
     increases = np.array(modded_increases, dtype=object)
-    for i in range(10000):
-        print("i", i)
-        increase = increases[i]
-        action = np.random.uniform(low, high)
-        action = np.zeros(7)
-        action[:3] = increase
-        obs, reward, done, _ = env.step(action)
-        site_pos_new = env.sim.data.get_site_xpos("gripper0_grip_site").copy()
-        print("error vector", (site_pos + increase) - site_pos_new)
-        print("error norm", np.linalg.norm((site_pos + increase) - site_pos_new))
-        site_pos = site_pos_new
-        env.render()
+    #while True:
+        #env.render()
+    while True:
+        env.reset()
+        for i in range(200):
+            print("Step", i)
+            action = np.zeros(7)
+            #action[2] = np.sin(i*0.025)*0.1
+            action[2] = 0.01
+            obs, reward, done, _ = env.step(action)
+            site_pos_new = env.sim.data.get_site_xpos("gripper0_grip_site").copy()
+            #print("error vector", (site_pos + increase) - site_pos_new)
+            #print("error norm", np.linalg.norm((site_pos + increase) - site_pos_new))
+            #site_pos = site_pos_new
+            env.render()

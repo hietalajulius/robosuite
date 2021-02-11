@@ -779,6 +779,17 @@ class PickPlaceBread(PickPlace):
         ), "invalid set of arguments"
         super().__init__(single_object_mode=2, object_type="bread", **kwargs)
 
+class PickPlaceFUFFUBread(PickPlace):
+    """
+    Easier version of task - place one bread into its bin.
+    """
+
+    def __init__(self, **kwargs):
+        assert (
+                "single_object_mode" not in kwargs and "object_type" not in kwargs
+        ), "invalid set of arguments"
+        super().__init__(single_object_mode=2, object_type="bread", **kwargs)
+
 
 class PickPlaceCereal(PickPlace):
     """

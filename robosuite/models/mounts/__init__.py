@@ -4,6 +4,7 @@ from .mount_factory import mount_factory
 from .rethink_mount import RethinkMount
 from .rethink_minimal_mount import RethinkMinimalMount
 from .null_mount import NullMount
+#from .table_mount import TableMount
 
 
 MOUNT_MAPPING = {

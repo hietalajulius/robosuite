@@ -19,7 +19,7 @@ class Panda(ManipulatorModel):
 
     @property
     def default_mount(self):
-        return "RethinkMount"
+        return None
 
     @property
     def default_gripper(self):
@@ -32,7 +32,8 @@ class Panda(ManipulatorModel):
     @property
     def init_qpos(self):
         #return np.array([0, np.pi / 16.0, 0.00, -np.pi / 2.0 - np.pi / 3.0, 0.00, np.pi - 0.2, np.pi/4])
-        return np.array([-0.102, -0.116, -0.364, -2.68, -0.08, 2.58, -0.396])
+        #return np.array([-0.102, -0.116, -0.364, -2.68, -0.08, 2.58, -0.396])
+        return np.array([0.148, 0.027, 0, -2.58, -0.0551, 2.6, -0.742])
 
     @property
     def base_xpos_offset(self):

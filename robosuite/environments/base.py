@@ -370,15 +370,14 @@ class MujocoEnv(metaclass=EnvMeta):
             self.sim.step()
             self._update_observables()
             policy_step = False
-        print("Values control loop")
         #self.log_joint_vals()
         #self.log_site_vals()
 
         # Note: this is done all at once to avoid floating point inaccuracies
         self.cur_time += self.control_timestep
-
-        reward, done, info = self._post_action(action)
-        return self._get_observations(), reward, done, info
+        obs = self._get_observations()
+        reward, done, info = self._post_action(action, obs)
+        return obs, reward, done, info
     
     def log_site_vals(self):
         print("Site pos", self.sim.data.get_site_xpos("gripper0_grip_site").copy())
@@ -400,7 +399,7 @@ class MujocoEnv(metaclass=EnvMeta):
         """
         self.sim.data.ctrl[:] = action
 
-    def _post_action(self, action):
+    def _post_action(self, action, observation=None):
         """
         Do any housekeeping after taking an action.
 
@@ -626,9 +625,10 @@ class MujocoEnv(metaclass=EnvMeta):
         Destroys the current mujoco renderer instance if it exists
         """
         # if there is an active viewer window, destroy it
-        if self.viewer is not None:
-            self.viewer.close()  # change this to viewer.finish()?
-            self.viewer = None
+        #if self.viewer is not None:
+            #self.viewer.close()  # change this to viewer.finish()?
+            #self.viewer = None
+        pass
 
     def close(self):
         """Do any cleanup necessary here."""
