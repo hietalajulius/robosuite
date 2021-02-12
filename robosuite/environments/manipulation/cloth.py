@@ -28,6 +28,7 @@ import mujoco_py
 import cv2
 
 from gym import utils
+import copy
 
 
 class Cloth(SingleArmEnv):
@@ -49,7 +50,7 @@ class Cloth(SingleArmEnv):
         object_type=None,
         has_renderer=False,
         has_offscreen_renderer=False,
-        render_camera="frontview",
+        render_camera="sideview",
         render_collision_mesh=False,
         render_visual_mesh=True,
         render_gpu_device_id=-1,
@@ -91,7 +92,8 @@ class Cloth(SingleArmEnv):
         self.constraints = constraints
         self.goal_noise_range = (0.0,0.02)
         self.velocity_in_obs = True
-        self.pixels = False
+        self.pixels = True
+        self.image_size = 100
         self.randomize_geoms = False
         self.randomize_params = False
         self.uniform_jnt_tend = True
@@ -112,7 +114,23 @@ class Cloth(SingleArmEnv):
 
         self.action_space = gym.spaces.Box(-1., 1., shape=(3,), dtype='float32')
         obs = self._get_observations()
-        self.observation_space = gym.spaces.Dict(dict(
+        if self.pixels:
+            self.observation_space = gym.spaces.Dict(dict(
+                desired_goal=gym.spaces.Box(-np.inf, np.inf,
+                                        shape=obs['achieved_goal'].shape, dtype='float32'),
+                achieved_goal=gym.spaces.Box(-np.inf, np.inf,
+                                         shape=obs['achieved_goal'].shape, dtype='float32'),
+                observation=gym.spaces.Box(-np.inf, np.inf,
+                                       shape=obs['observation'].shape, dtype='float32'),
+                robot_observation=gym.spaces.Box(-np.inf, np.inf,
+                                             shape=obs['robot_observation'].shape, dtype='float32'),
+                model_params=gym.spaces.Box(-np.inf, np.inf,
+                                        shape=obs['model_params'].shape, dtype='float32'),
+                image=gym.spaces.Box(-np.inf, np.inf,
+                                 shape=obs['image'].shape, dtype='float32')
+            ))
+        else:
+            self.observation_space = gym.spaces.Dict(dict(
                 desired_goal=gym.spaces.Box(-np.inf, np.inf,
                                         shape=obs['achieved_goal'].shape, dtype='float32'),
                 achieved_goal=gym.spaces.Box(-np.inf, np.inf,
@@ -154,8 +172,19 @@ class Cloth(SingleArmEnv):
             elif mode == 'rgb_array':
                 self.viewer = mujoco_py.MjRenderContextOffscreen(
                     self.sim, device_id=-1)
+            self._viewer_setup()
             self._viewers[mode] = self.viewer
         return self.viewer
+
+    def _viewer_setup(self):
+        lookat = np.array([0.02, -0.105, 0.14])
+
+        for idx, value in enumerate(lookat):
+            self.viewer.cam.lookat[idx] = value
+
+        self.viewer.cam.distance = .35
+        self.viewer.cam.azimuth = 180
+        self.viewer.cam.elevation = -70.
 
     def set_aux_positions(self, corner1, corner2, corner3, corner4):
         self.viewer.add_marker(size=np.array(
@@ -249,6 +278,7 @@ class Cloth(SingleArmEnv):
             image_obs = cv2.cvtColor(image_obs, cv2.COLOR_BGR2GRAY)
 
             observation['image'] = (image_obs / 255).flatten()
+
         return observation
 
     def _load_model(self):
