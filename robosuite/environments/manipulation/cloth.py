@@ -26,6 +26,7 @@ from gym.envs.robotics import reward_calculation
 import gym
 import mujoco_py
 import cv2
+from gym.utils import seeding
 
 from gym import utils
 import copy
@@ -95,8 +96,27 @@ class Cloth(SingleArmEnv):
         self.pixels = True
         self.image_size = 100
         self.randomize_geoms = False
-        self.randomize_params = False
+        self.randomize_params = True
         self.uniform_jnt_tend = True
+
+        self.min_damping = 0.00001  # TODO: pass ranges in from outside
+        self.max_damping = 0.02
+
+        self.min_stiffness = 0.00001  # TODO: pass ranges in from outside
+        self.max_stiffness = 0.02
+
+        self.min_geom_size = 0.005  # TODO: pass ranges in from outside
+        self.max_geom_size = 0.011
+        self.current_geom_size = self.min_geom_size
+
+        self.current_joint_stiffness = self.min_stiffness
+        self.current_joint_damping = self.min_damping
+
+        self.current_tendon_stiffness = self.min_stiffness
+        self.current_tendon_damping = self.min_damping
+
+
+        self.seed(1)
 
         self._viewers = {}
         self.metadata = {
@@ -145,8 +165,35 @@ class Cloth(SingleArmEnv):
 
 
         self.initted = True
+        if self.randomize_params:
+            self.set_joint_tendon_params(self.current_joint_stiffness, self.current_joint_damping,
+                                         self.current_tendon_stiffness, self.current_tendon_damping)
+        if self.randomize_geoms:
+            self.set_geom_params()
 
         #utils.EzPickle.__init__(self)
+
+    def set_geom_params(self):
+        for geom_name in self.sim.model.geom_names:
+            if "G" in geom_name:
+                geom_id = self.sim.model.geom_name2id(geom_name)
+                self.sim.model.geom_size[geom_id] = self.current_geom_size * \
+                    (1 + np.random.randn()*0.01)  # TODO: Figure out if this makes sense
+
+        self.sim.forward()
+
+    def set_joint_tendon_params(self, joint_stiffness, joint_damping, tendon_stiffness, tendon_damping):
+        for _, joint_name in enumerate(self.sim.model.joint_names):
+            joint_id = self.sim.model.joint_name2id(joint_name)
+            self.sim.model.jnt_stiffness[joint_id] = joint_stiffness
+            self.sim.model.dof_damping[joint_id] = joint_damping
+
+        for _, tendon_name in enumerate(self.sim.model.tendon_names):
+            tendon_id = self.sim.model.tendon_name2id(tendon_name)
+            self.sim.model.tendon_stiffness[tendon_id] = tendon_stiffness
+            self.sim.model.tendon_damping[tendon_id] = tendon_damping
+
+        self.sim.forward()
 
     def render(self, mode='human', width=1000, height=1000, image_capture=False, filename=None):
         if mode == 'rgb_array':
@@ -224,7 +271,7 @@ class Cloth(SingleArmEnv):
                 'is_success': done}
         
         if done:
-            print("REAL sim ep success", reward)
+            print("REAL sim ep success", reward, self.current_joint_damping, self.current_joint_stiffness)
 
 
         return reward, done, info
@@ -384,6 +431,10 @@ class Cloth(SingleArmEnv):
 
         self.sim.forward()
 
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
     def _reset_internal(self):
         """
         Resets simulation internal configurations.
@@ -391,7 +442,30 @@ class Cloth(SingleArmEnv):
         super()._reset_internal()
         if hasattr(self, "initted"):
             self.goal = self._sample_goal()
-            self._reset_view()
+            if self.randomize_params:
+                self.current_joint_stiffness = self.np_random.uniform(
+                    self.min_stiffness, self.max_stiffness)
+                self.current_joint_damping = self.np_random.uniform(
+                    self.min_damping, self.max_damping)
+
+                if self.uniform_jnt_tend:
+                    self.current_tendon_stiffness = self.current_joint_stiffness
+                    self.current_tendon_damping = self.current_joint_damping
+                else:
+                    # Own damping/stiffness for tendons
+                    self.current_tendon_stiffness = self.np_random.uniform(
+                        self.min_stiffness, self.max_stiffness)
+                    self.current_tendon_damping = self.np_random.uniform(
+                        self.min_damping, self.max_damping)
+
+            self.set_joint_tendon_params(self.current_joint_stiffness, self.current_joint_damping,
+                                         self.current_tendon_stiffness, self.current_tendon_damping)
+
+            if self.randomize_geoms:
+                self.current_geom_size = self.np_random.uniform(
+                    self.min_geom_size, self.max_geom_size)
+                self.set_geom_params()
+                self._reset_view()
 
 
     def _check_success(self):

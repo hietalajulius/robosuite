@@ -4,6 +4,8 @@
         <texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" width="512" height="512"/>
         <material name="MatGnd" reflectance="0.5" texture="texplane" texrepeat="1 1" texuniform="true" />
         <mesh name="table" file="../meshes/table.stl" />
+        <texture name="white_borders" type="2d" file="../textures/white_borders.png"/>
+        <material name="white_borders" texture="white_borders"/>
     </asset>
 
 
@@ -19,10 +21,10 @@
 
         <body pos="0.02 -0.105 0.14">
             <composite type="grid" count="9 9 1" spacing="0.02"  >
-                <joint kind="main" damping="0.001" stiffness="0.001"/>
-                <tendon width="0.001" kind="shear" damping="0.001" stiffness="0.001" /> 
-                <skin rgba="0 0 1 1" />
-                <geom type="capsule" size="0.005" rgba=".8 .2 .1 1" friction='1.5 1.5 1.5' solref='0.01 1' solimp='0.99 0.99 0.01' condim='4' />
+                    <joint kind="main" damping="0.001" stiffness="0.001"/>
+                    <tendon width="0.001" kind="shear" damping="0.001" stiffness="0.001" /> 
+                    <skin material="white_borders" texcoord="true" inflate="0.0002" subgrid="2"/>
+                    <geom group="0" type="capsule" size="0.005" rgba=".8 .2 .1 1" friction='1.5 1.5 1.5' solref='0.01 1' solimp='0.99 0.99 0.01' condim='4' />
             </composite>
         </body>
         <site name="target0" pos="0 0 0.3" size="0.005 0.005 0.005" rgba="0 0 1 1" type="sphere"></site>
