@@ -151,7 +151,7 @@ class Controller(object, metaclass=abc.ABCMeta):
             #mujoco_py.cymj._mj_fullM(self.sim.model, mass_matrix, self.sim.data.qM)
             #mass_matrix = np.reshape(mass_matrix, (len(self.sim.data.qvel), len(self.sim.data.qvel)))
             #self.mass_matrix = mass_matrix[self.qvel_index, :][:, self.qvel_index]
-            self.mass_matrix = get_mass_matrix(self.joint_pos)
+            #self.mass_matrix = get_mass_matrix(self.joint_pos)
 
             # Clear self.new_update
             self.new_update = False

@@ -38,6 +38,15 @@ class Cloth(SingleArmEnv):
         self,
         robots,
         max_action,
+        sparse_dense,
+        goal_noise_range,
+        pixels,
+        randomize_params,
+        randomize_geoms,
+        uniform_jnt_tend,
+        random_seed,
+        velocity_in_obs,
+        image_size,
         env_configuration="default",
         constraints=None,
         controller_configs=None,
@@ -91,15 +100,15 @@ class Cloth(SingleArmEnv):
         )
 
         self.single_goal_dim = 3
-        self.sparse_dense= False
+        self.sparse_dense=sparse_dense
         self.constraints = constraints
-        self.goal_noise_range = (0.0,0.02)
-        self.velocity_in_obs = True
-        self.pixels = True
-        self.image_size = 100
-        self.randomize_geoms = False
-        self.randomize_params = True
-        self.uniform_jnt_tend = True
+        self.goal_noise_range = goal_noise_range
+        self.velocity_in_obs = velocity_in_obs
+        self.pixels = pixels
+        self.image_size = image_size
+        self.randomize_geoms = randomize_geoms
+        self.randomize_params = randomize_params
+        self.uniform_jnt_tend = uniform_jnt_tend
 
         self.min_damping = 0.00001  # TODO: pass ranges in from outside
         self.max_damping = 0.02
@@ -118,7 +127,7 @@ class Cloth(SingleArmEnv):
         self.current_tendon_damping = self.min_damping
 
 
-        self.seed(1)
+        self.seed(random_seed)
 
         self._viewers = {}
         self.metadata = {
