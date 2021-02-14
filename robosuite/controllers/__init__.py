@@ -3,6 +3,7 @@ from .osc import OperationalSpaceController
 from .joint_pos import JointPositionController
 from .joint_vel import JointVelocityController
 from .joint_tor import JointTorqueController
+from .mass_matrix import get_mass_matrix
 
 
 CONTROLLER_INFO = {

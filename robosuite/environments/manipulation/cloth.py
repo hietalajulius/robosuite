@@ -37,6 +37,7 @@ class Cloth(SingleArmEnv):
     def __init__(
         self,
         robots,
+        max_action,
         env_configuration="default",
         constraints=None,
         controller_configs=None,
@@ -64,6 +65,7 @@ class Cloth(SingleArmEnv):
         camera_widths=256,
         camera_depths=False,
     ):  
+
 
         super().__init__(
             robots=robots,
@@ -132,7 +134,7 @@ class Cloth(SingleArmEnv):
         self.reward_function = reward_calculation.get_reward_function(
             self.constraints, self.single_goal_dim, self.sparse_dense)
 
-        self.action_space = gym.spaces.Box(-1., 1., shape=(3,), dtype='float32')
+        self.action_space = gym.spaces.Box(-max_action, max_action, shape=(3,), dtype='float32')
         obs = self._get_observations()
         if self.pixels:
             self.observation_space = gym.spaces.Dict(dict(

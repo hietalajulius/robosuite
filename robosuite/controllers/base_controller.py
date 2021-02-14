@@ -3,6 +3,7 @@ from collections.abc import Iterable
 import numpy as np
 import mujoco_py
 import robosuite.utils.macros as macros
+from .mass_matrix import get_mass_matrix
 
 
 class Controller(object, metaclass=abc.ABCMeta):
@@ -146,10 +147,11 @@ class Controller(object, metaclass=abc.ABCMeta):
             self.J_ori = np.array(self.sim.data.get_site_jacr(self.eef_name).reshape((3, -1))[:, self.qvel_index])
             self.J_full = np.array(np.vstack([self.J_pos, self.J_ori]))
 
-            mass_matrix = np.ndarray(shape=(len(self.sim.data.qvel) ** 2,), dtype=np.float64, order='C')
-            mujoco_py.cymj._mj_fullM(self.sim.model, mass_matrix, self.sim.data.qM)
-            mass_matrix = np.reshape(mass_matrix, (len(self.sim.data.qvel), len(self.sim.data.qvel)))
-            self.mass_matrix = mass_matrix[self.qvel_index, :][:, self.qvel_index]
+            #mass_matrix = np.ndarray(shape=(len(self.sim.data.qvel) ** 2,), dtype=np.float64, order='C')
+            #mujoco_py.cymj._mj_fullM(self.sim.model, mass_matrix, self.sim.data.qM)
+            #mass_matrix = np.reshape(mass_matrix, (len(self.sim.data.qvel), len(self.sim.data.qvel)))
+            #self.mass_matrix = mass_matrix[self.qvel_index, :][:, self.qvel_index]
+            self.mass_matrix = get_mass_matrix(self.joint_pos)
 
             # Clear self.new_update
             self.new_update = False
