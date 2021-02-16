@@ -102,7 +102,8 @@ def choose_multi_arm_config():
         k = min(max(int(s), 0), len(env_configs))
     except:
         k = 0
-        print("Input is not valid. Use {} by default.".format(list(env_configs)[k]))
+        print("Input is not valid. Use {} by default.".format(
+            list(env_configs)[k]))
 
     # Return requested configuration
     return list(env_configs.values())[k]
@@ -186,6 +187,7 @@ def input2action(device, robot, active_arm="right", env_configuration=None):
                 device
 
     """
+
     state = device.get_controller_state()
     # Note: Devices output rotation with x and z flipped to account for robots starting with gripper facing down
     #       Also note that the outputted rotation is an absolute rotation, while outputted dpos is delta pos
@@ -203,8 +205,10 @@ def input2action(device, robot, active_arm="right", env_configuration=None):
         return None, None
 
     # Get controller reference
-    controller = robot.controller if not isinstance(robot, Bimanual) else robot.controller[active_arm]
-    gripper_dof = robot.gripper.dof if not isinstance(robot, Bimanual) else robot.gripper[active_arm].dof
+    controller = robot.controller if not isinstance(
+        robot, Bimanual) else robot.controller[active_arm]
+    gripper_dof = robot.gripper.dof if not isinstance(
+        robot, Bimanual) else robot.gripper[active_arm].dof
 
     # First process the raw drotation
     drotation = raw_drotation[[1, 0, 2]]
@@ -251,10 +255,11 @@ def input2action(device, robot, active_arm="right", env_configuration=None):
         print("Error: Unsupported controller specified -- Robot must have either an IK or OSC-based controller!")
 
     # map 0 to -1 (open) and map 1 to 1 (closed)
-    grasp = 1 if grasp else -1
 
     # Create action based on action space of individual robot
-    action = np.concatenate([dpos, drotation, [grasp] * gripper_dof])
+
+    action = np.concatenate(
+        [dpos, drotation, [grasp] * gripper_dof])
 
     # Return the action and grasp
     return action, grasp

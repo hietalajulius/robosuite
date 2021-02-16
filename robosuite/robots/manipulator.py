@@ -1,4 +1,5 @@
 from robosuite.robots.robot import Robot
+import numpy as np
 
 
 class Manipulator(Robot):
@@ -21,14 +22,19 @@ class Manipulator(Robot):
             gripper (GripperModel): Gripper to execute action for
             gripper_action (float): Value between [-1,1] to send to gripper
         """
-        actuator_idxs = [self.sim.model.actuator_name2id(actuator) for actuator in gripper.actuators]
+        actuator_idxs = [self.sim.model.actuator_name2id(
+            actuator) for actuator in gripper.actuators]
         gripper_action_actual = gripper.format_action(gripper_action)
+        applied_gripper_action = np.array([gripper_action_actual,
+                                           -gripper_action_actual]).flatten()
+
         # rescale normalized gripper action to control ranges
-        ctrl_range = self.sim.model.actuator_ctrlrange[actuator_idxs]
-        bias = 0.5 * (ctrl_range[:, 1] + ctrl_range[:, 0])
-        weight = 0.5 * (ctrl_range[:, 1] - ctrl_range[:, 0])
-        applied_gripper_action = bias + weight * gripper_action_actual
-        self.sim.data.ctrl[actuator_idxs] = applied_gripper_action
+        #ctrl_range = self.sim.model.actuator_ctrlrange[actuator_idxs]
+        #bias = 0.5 * (ctrl_range[:, 1] + ctrl_range[:, 0])
+        #weight = 0.5 * (ctrl_range[:, 1] - ctrl_range[:, 0])
+        #applied_gripper_action = bias + weight * gripper_action_actual
+        # TODO: allow grips again
+        #self.sim.data.ctrl[actuator_idxs] = applied_gripper_action
 
     def visualize(self, vis_settings):
         """

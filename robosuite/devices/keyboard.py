@@ -59,11 +59,12 @@ class Keyboard(Device):
         Resets internal state of controller, except for the reset signal.
         """
         self.rotation = np.array([[-1., 0., 0.], [0., 1., 0.], [0., 0., -1.]])
-        self.raw_drotation = np.zeros(3) # immediate roll, pitch, yaw delta values from keyboard hits
+        # immediate roll, pitch, yaw delta values from keyboard hits
+        self.raw_drotation = np.zeros(3)
         self.last_drotation = np.zeros(3)
         self.pos = np.zeros(3)  # (x, y, z)
         self.last_pos = np.zeros(3)
-        self.grasp = False
+        self.grasp = 0
 
     def start_control(self):
         """
@@ -84,13 +85,14 @@ class Keyboard(Device):
 
         dpos = self.pos - self.last_pos
         self.last_pos = np.array(self.pos)
-        raw_drotation = self.raw_drotation - self.last_drotation # create local variable to return, then reset internal drotation
+        # create local variable to return, then reset internal drotation
+        raw_drotation = self.raw_drotation - self.last_drotation
         self.last_drotation = np.array(self.raw_drotation)
         return dict(
             dpos=dpos,
             rotation=self.rotation,
             raw_drotation=raw_drotation,
-            grasp=int(self.grasp),
+            grasp=self.grasp,
             reset=self._reset_state,
         )
 
@@ -122,27 +124,33 @@ class Keyboard(Device):
 
         # controls for moving orientation
         elif key == glfw.KEY_Z:
-            drot = rotation_matrix(angle=0.1 * self.rot_sensitivity, direction=[1., 0., 0.])[:3, :3]
+            drot = rotation_matrix(
+                angle=0.1 * self.rot_sensitivity, direction=[1., 0., 0.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates x
             self.raw_drotation[1] -= 0.1 * self.rot_sensitivity
         elif key == glfw.KEY_X:
-            drot = rotation_matrix(angle=-0.1 * self.rot_sensitivity, direction=[1., 0., 0.])[:3, :3]
+            drot = rotation_matrix(
+                angle=-0.1 * self.rot_sensitivity, direction=[1., 0., 0.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates x
             self.raw_drotation[1] += 0.1 * self.rot_sensitivity
         elif key == glfw.KEY_T:
-            drot = rotation_matrix(angle=0.1 * self.rot_sensitivity, direction=[0., 1., 0.])[:3, :3]
+            drot = rotation_matrix(
+                angle=0.1 * self.rot_sensitivity, direction=[0., 1., 0.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates y
             self.raw_drotation[0] += 0.1 * self.rot_sensitivity
         elif key == glfw.KEY_G:
-            drot = rotation_matrix(angle=-0.1 * self.rot_sensitivity, direction=[0., 1., 0.])[:3, :3]
+            drot = rotation_matrix(
+                angle=-0.1 * self.rot_sensitivity, direction=[0., 1., 0.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates y
             self.raw_drotation[0] -= 0.1 * self.rot_sensitivity
         elif key == glfw.KEY_C:
-            drot = rotation_matrix(angle=0.1 * self.rot_sensitivity, direction=[0., 0., 1.])[:3, :3]
+            drot = rotation_matrix(
+                angle=0.1 * self.rot_sensitivity, direction=[0., 0., 1.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates z
             self.raw_drotation[2] += 0.1 * self.rot_sensitivity
         elif key == glfw.KEY_V:
-            drot = rotation_matrix(angle=-0.1 * self.rot_sensitivity, direction=[0., 0., 1.])[:3, :3]
+            drot = rotation_matrix(
+                angle=-0.1 * self.rot_sensitivity, direction=[0., 0., 1.])[:3, :3]
             self.rotation = self.rotation.dot(drot)  # rotates z
             self.raw_drotation[2] -= 0.1 * self.rot_sensitivity
 
@@ -160,7 +168,16 @@ class Keyboard(Device):
 
         # controls for grasping
         if key == glfw.KEY_SPACE:
-            self.grasp = not self.grasp  # toggle gripper
+            print("TOGGG")
+            self.grasp = 0  # toggle gripper
+
+        if key == glfw.KEY_I:
+
+            self.grasp += 0.005
+            print("open", self.grasp)
+        if key == glfw.KEY_O:
+            self.grasp -= 0.005
+            print("close", self.grasp)
 
         # user-commanded reset
         elif key == glfw.KEY_Q:

@@ -381,6 +381,8 @@ class MujocoXMLObject(MujocoObject, MujocoXML):
         """
         By default, don't exclude any from being prefixed
         """
+        if inp is None:
+            return True
         return False
 
     @staticmethod

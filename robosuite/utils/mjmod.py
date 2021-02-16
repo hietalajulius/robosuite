@@ -30,6 +30,7 @@ class BaseModder():
             seed used to randomize these modifications without impacting other
             numpy seeds / randomizations
     """
+
     def __init__(self, sim, random_state=None):
         self.sim = sim
         if random_state is None:
@@ -91,6 +92,7 @@ class LightingModder(BaseModder):
 
         diffuse_perturbation_size (float): Magnitude of diffuse attribute randomization
     """
+
     def __init__(
         self,
         sim,
@@ -103,7 +105,7 @@ class LightingModder(BaseModder):
         randomize_diffuse=True,
         randomize_active=True,
         position_perturbation_size=0.1,
-        direction_perturbation_size=0.35, # 20 degrees
+        direction_perturbation_size=0.35,  # 20 degrees
         specular_perturbation_size=0.1,
         ambient_perturbation_size=0.1,
         diffuse_perturbation_size=0.1,
@@ -133,11 +135,12 @@ class LightingModder(BaseModder):
         """
         Uses the current MjSim state and model to save default parameter values. 
         """
-        self._defaults = { k : {} for k in self.light_names }
+        self._defaults = {k: {} for k in self.light_names}
         for name in self.light_names:
             self._defaults[name]['pos'] = np.array(self.get_pos(name))
             self._defaults[name]['dir'] = np.array(self.get_dir(name))
-            self._defaults[name]['specular'] = np.array(self.get_specular(name))
+            self._defaults[name]['specular'] = np.array(
+                self.get_specular(name))
             self._defaults[name]['ambient'] = np.array(self.get_ambient(name))
             self._defaults[name]['diffuse'] = np.array(self.get_diffuse(name))
             self._defaults[name]['active'] = self.get_active(name)
@@ -185,12 +188,12 @@ class LightingModder(BaseModder):
             name (str): Name of the lighting source to randomize for
         """
         delta_pos = self.random_state.uniform(
-            low=-self.position_perturbation_size, 
-            high=self.position_perturbation_size, 
+            low=-self.position_perturbation_size,
+            high=self.position_perturbation_size,
             size=3,
         )
         self.set_pos(
-            name, 
+            name,
             self._defaults[name]['pos'] + delta_pos,
         )
 
@@ -202,9 +205,11 @@ class LightingModder(BaseModder):
             name (str): Name of the lighting source to randomize for
         """
         # sample a small, random axis-angle delta rotation
-        random_axis, random_angle = trans.random_axis_angle(angle_limit=self.direction_perturbation_size, random_state=self.random_state)
-        random_delta_rot = trans.quat2mat(trans.axisangle2quat(random_axis * random_angle))
-        
+        random_axis, random_angle = trans.random_axis_angle(
+            angle_limit=self.direction_perturbation_size, random_state=self.random_state)
+        random_delta_rot = trans.quat2mat(
+            trans.axisangle2quat(random_axis * random_angle))
+
         # rotate direction by this delta rotation and set the new direction
         new_dir = random_delta_rot.dot(self._defaults[name]['dir'])
         self.set_dir(
@@ -220,12 +225,12 @@ class LightingModder(BaseModder):
             name (str): Name of the lighting source to randomize for
         """
         delta = self.random_state.uniform(
-            low=-self.specular_perturbation_size, 
-            high=self.specular_perturbation_size, 
+            low=-self.specular_perturbation_size,
+            high=self.specular_perturbation_size,
             size=3,
         )
         self.set_specular(
-            name, 
+            name,
             self._defaults[name]['specular'] + delta,
         )
 
@@ -237,12 +242,12 @@ class LightingModder(BaseModder):
             name (str): Name of the lighting source to randomize for
         """
         delta = self.random_state.uniform(
-            low=-self.ambient_perturbation_size, 
-            high=self.ambient_perturbation_size, 
+            low=-self.ambient_perturbation_size,
+            high=self.ambient_perturbation_size,
             size=3,
         )
         self.set_ambient(
-            name, 
+            name,
             self._defaults[name]['ambient'] + delta,
         )
 
@@ -254,12 +259,12 @@ class LightingModder(BaseModder):
             name (str): Name of the lighting source to randomize for
         """
         delta = self.random_state.uniform(
-            low=-self.diffuse_perturbation_size, 
-            high=self.diffuse_perturbation_size, 
+            low=-self.diffuse_perturbation_size,
+            high=self.diffuse_perturbation_size,
             size=3,
         )
         self.set_diffuse(
-            name, 
+            name,
             self._defaults[name]['diffuse'] + delta,
         )
 
@@ -330,7 +335,7 @@ class LightingModder(BaseModder):
         lightid = self.get_lightid(name)
         assert lightid > -1, "Unkwnown light %s" % name
 
-        return self.model.light_dir[lightid] 
+        return self.model.light_dir[lightid]
 
     def set_dir(self, name, value):
         """
@@ -541,6 +546,7 @@ class CameraModder(BaseModder):
     Raises:
         AssertionError: [No randomization selected]
     """
+
     def __init__(
         self,
         sim,
@@ -575,10 +581,12 @@ class CameraModder(BaseModder):
         """
         Uses the current MjSim state and model to save default parameter values. 
         """
-        self._defaults = { k : {} for k in self.camera_names }
+        self._defaults = {k: {} for k in self.camera_names}
         for camera_name in self.camera_names:
-            self._defaults[camera_name]['pos'] = np.array(self.get_pos(camera_name))
-            self._defaults[camera_name]['quat'] = np.array(self.get_quat(camera_name))
+            self._defaults[camera_name]['pos'] = np.array(
+                self.get_pos(camera_name))
+            self._defaults[camera_name]['quat'] = np.array(
+                self.get_quat(camera_name))
             self._defaults[camera_name]['fovy'] = self.get_fovy(camera_name)
 
     def restore_defaults(self):
@@ -612,12 +620,12 @@ class CameraModder(BaseModder):
             name (str): Name of the camera to randomize for
         """
         delta_pos = self.random_state.uniform(
-            low=-self.position_perturbation_size, 
-            high=self.position_perturbation_size, 
+            low=-self.position_perturbation_size,
+            high=self.position_perturbation_size,
             size=3,
         )
         self.set_pos(
-            name, 
+            name,
             self._defaults[name]['pos'] + delta_pos,
         )
 
@@ -629,11 +637,14 @@ class CameraModder(BaseModder):
             name (str): Name of the camera to randomize for
         """
         # sample a small, random axis-angle delta rotation
-        random_axis, random_angle = trans.random_axis_angle(angle_limit=self.rotation_perturbation_size, random_state=self.random_state)
-        random_delta_rot = trans.quat2mat(trans.axisangle2quat(random_axis * random_angle))
-        
+        random_axis, random_angle = trans.random_axis_angle(
+            angle_limit=self.rotation_perturbation_size, random_state=self.random_state)
+        random_delta_rot = trans.quat2mat(
+            trans.axisangle2quat(random_axis * random_angle))
+
         # compute new rotation and set it
-        base_rot = trans.quat2mat(trans.convert_quat(self._defaults[name]['quat'], to='xyzw'))
+        base_rot = trans.quat2mat(trans.convert_quat(
+            self._defaults[name]['quat'], to='xyzw'))
         new_rot = random_delta_rot.T.dot(base_rot)
         new_quat = trans.convert_quat(trans.mat2quat(new_rot), to='wxyz')
         self.set_quat(
@@ -820,7 +831,7 @@ class TextureModder(BaseModder):
     """
 
     def __init__(
-        self, 
+        self,
         sim,
         random_state=None,
         geom_names=None,
@@ -837,6 +848,8 @@ class TextureModder(BaseModder):
             geom_names = self.sim.model.geom_names
         self.geom_names = geom_names
 
+        print("Geom names to rand", self.geom_names)
+
         self.randomize_local = randomize_local
         self.randomize_material = randomize_material
         self.local_rgb_interpolation = local_rgb_interpolation
@@ -845,14 +858,14 @@ class TextureModder(BaseModder):
         self.randomize_skybox = randomize_skybox
 
         self._all_texture_variation_callbacks = {
-            'rgb' : self.rand_rgb,
-            'checker' : self.rand_checker,
-            'noise' : self.rand_noise,
-            'gradient' : self.rand_gradient,
+            'rgb': self.rand_rgb,
+            'checker': self.rand_checker,
+            'noise': self.rand_noise,
+            'gradient': self.rand_gradient,
         }
-        self._texture_variation_callbacks = { 
-            k : self._all_texture_variation_callbacks[k] 
-            for k in self.texture_variations 
+        self._texture_variation_callbacks = {
+            k: self._all_texture_variation_callbacks[k]
+            for k in self.texture_variations
         }
 
         self.save_defaults()
@@ -866,15 +879,22 @@ class TextureModder(BaseModder):
         # self._build_tex_geom_map()
 
         # save copy of original texture bitmaps
-        self._default_texture_bitmaps = [np.array(text.bitmap) for text in self.textures]
+        self._default_texture_bitmaps = [
+            np.array(text.bitmap) for text in self.textures]
 
         # These matrices will be used to rapidly synthesize
         # checker pattern bitmaps
         self._cache_checker_matrices()
 
-        self._defaults = { k : {} for k in self.geom_names }
+        self._defaults = {k: {} for k in self.geom_names}
         if self.randomize_skybox:
             self._defaults['skybox'] = {}
+
+        skin_tex_id = self._name_to_tex_id('skin')
+        self._defaults['skin'] = {}
+        self._defaults['skin']['texture'] = self._default_texture_bitmaps[skin_tex_id]
+        self._defaults['skin']['material'] = self.get_material('skin')
+
         for name in self.geom_names:
             if self._check_geom_for_texture(name):
                 # store the texture bitmap for this geom
@@ -896,13 +916,16 @@ class TextureModder(BaseModder):
         """
         for name in self.geom_names:
             if self._check_geom_for_texture(name):
-                self.set_texture(name, self._defaults[name]['texture'], perturb=False)
-                self.set_material(name, self._defaults[name]['material'], perturb=False)
+                self.set_texture(
+                    name, self._defaults[name]['texture'], perturb=False)
+                self.set_material(
+                    name, self._defaults[name]['material'], perturb=False)
             else:
                 self.set_geom_rgb(name, self._defaults[name]['rgb'])
 
         if self.randomize_skybox:
-            self.set_texture('skybox', self._defaults['skybox']['texture'], perturb=False)
+            self.set_texture(
+                'skybox', self._defaults['skybox']['texture'], perturb=False)
 
     def randomize(self):
         """
@@ -910,6 +933,7 @@ class TextureModder(BaseModder):
         for geoms that have no material.
         """
         self.whiten_materials()
+        self._randomize_skin()
         for name in self.geom_names:
             if self._check_geom_for_texture(name):
                 # geom has valid texture that can be randomized
@@ -933,10 +957,24 @@ class TextureModder(BaseModder):
         """
         if self.randomize_local:
             random_color = self.random_state.uniform(0, 1, size=3)
-            rgb = (1. - self.local_rgb_interpolation) * self._defaults[name]['rgb'] + self.local_rgb_interpolation * random_color
+            rgb = (1. - self.local_rgb_interpolation) * \
+                self._defaults[name]['rgb'] + \
+                self.local_rgb_interpolation * random_color
         else:
             rgb = self.random_state.uniform(0, 1, size=3)
         self.set_geom_rgb(name, rgb)
+
+    def _randomize_skin(self):
+        self.set_checker('skin', (np.random.randint(256), 0, 0), (0, 0, 0))
+
+        choices = [
+            self.rand_checker,
+            self.rand_gradient,
+            self.rand_rgb,
+            self.rand_noise,
+        ]
+        choice = np.random.randint(len(choices))
+        return choices[choice]('skin')
 
     def _randomize_texture(self, name):
         """
@@ -962,7 +1000,8 @@ class TextureModder(BaseModder):
         # Grab material id
         mat_id = self._name_to_mat_id(name)
         # Randomize reflectance, shininess, and specular
-        material = self.random_state.uniform(0, 1, size=3)   # (reflectance, shininess, specular)
+        # (reflectance, shininess, specular)
+        material = self.random_state.uniform(0, 1, size=3)
         self.set_material(name, material, perturb=self.randomize_local)
 
     def rand_checker(self, name):
@@ -984,7 +1023,8 @@ class TextureModder(BaseModder):
         """
         rgb1, rgb2 = self.get_rand_rgb(2)
         vertical = bool(self.random_state.uniform() > 0.5)
-        self.set_gradient(name, rgb1, rgb2, vertical=vertical, perturb=self.randomize_local)
+        self.set_gradient(name, rgb1, rgb2, vertical=vertical,
+                          perturb=self.randomize_local)
 
     def rand_rgb(self, name):
         """
@@ -1005,7 +1045,8 @@ class TextureModder(BaseModder):
         """
         fraction = 0.1 + self.random_state.uniform() * 0.8
         rgb1, rgb2 = self.get_rand_rgb(2)
-        self.set_noise(name, rgb1, rgb2, fraction, perturb=self.randomize_local)
+        self.set_noise(name, rgb1, rgb2, fraction,
+                       perturb=self.randomize_local)
 
     def whiten_materials(self):
         """
@@ -1077,9 +1118,16 @@ class TextureModder(BaseModder):
         Returns:
             Texture: texture associated with the geom
         """
-        tex_id = self._name_to_tex_id(name)
-        texture = self.textures[tex_id]
-        return texture
+
+        if name == 'skin':
+            mat_id = self.model.skin_matid[0]
+            assert mat_id >= 0, "Skin has no assigned material"
+            tex_id = self.model.mat_texid[mat_id]
+            assert tex_id >= 0, "Material has no assigned texture"
+        else:
+            tex_id = self._name_to_tex_id(name)
+
+        return self.textures[tex_id]
 
     def set_texture(self, name, bitmap, perturb=False):
         """
@@ -1097,7 +1145,9 @@ class TextureModder(BaseModder):
         """
         bitmap_to_set = self.get_texture(name).bitmap
         if perturb:
-            bitmap = (1. - self.local_rgb_interpolation) * self._defaults[name]['texture'] + self.local_rgb_interpolation * bitmap
+            bitmap = (1. - self.local_rgb_interpolation) * \
+                self._defaults[name]['texture'] + \
+                self.local_rgb_interpolation * bitmap
         bitmap_to_set[:] = bitmap
         self.upload_texture(name)
 
@@ -1111,7 +1161,10 @@ class TextureModder(BaseModder):
         Returns:
             np.array: (reflectance, shininess, specular) material properties associated with the geom
         """
-        mat_id = self._name_to_mat_id(name)
+        if name == 'skin':
+            mat_id = self.model.skin_matid[0]
+        else:
+            mat_id = self._name_to_mat_id(name)
         # Material is in tuple form (reflectance, shininess, specular)
         material = np.array((self.model.mat_reflectance[mat_id],
                              self.model.mat_shininess[mat_id],
@@ -1134,7 +1187,7 @@ class TextureModder(BaseModder):
         mat_id = self._name_to_mat_id(name)
         if perturb:
             material = (1. - self.local_material_interpolation) * self._defaults[name]['material'] + \
-                       self.local_material_interpolation * material
+                self.local_material_interpolation * material
         self.model.mat_reflectance[mat_id] = material[0]
         self.model.mat_shininess[mat_id] = material[1]
         self.model.mat_specular[mat_id] = material[2]
@@ -1149,6 +1202,9 @@ class TextureModder(BaseModder):
         Returns:
             np.array: 3d-array representing rgb checker pattern
         """
+        if name == 'skin':
+            return self._skin_checker_mat
+
         tex_id = self._name_to_tex_id(name)
         return self._texture_checker_mats[tex_id]
 
@@ -1294,6 +1350,9 @@ class TextureModder(BaseModder):
             assert skybox_tex_id >= 0
             return skybox_tex_id
 
+        if name == 'skin':
+            return self.model.mat_texid[self.model.skin_matid[0]]
+
         assert self._check_geom_for_texture(name)
         geom_id = self.model.geom_name2id(name)
         mat_id = self.model.geom_matid[geom_id]
@@ -1338,7 +1397,16 @@ class TextureModder(BaseModder):
         for tex_id in range(self.model.ntex):
             texture = self.textures[tex_id]
             h, w = texture.bitmap.shape[:2]
-            self._texture_checker_mats.append(self._make_checker_matrices(h, w))
+            self._texture_checker_mats.append(
+                self._make_checker_matrices(h, w))
+
+        skin_tex_id = self.model.mat_texid[self.model.skin_matid[0]]
+        if skin_tex_id >= 0:
+            texture = self.textures[skin_tex_id]
+            h, w = texture.bitmap.shape[:2]
+            self._skin_checker_mat = self._make_checker_matrices(h, w)
+        else:
+            self._skin_checker_mat = None
 
     def _make_checker_matrices(self, h, w):
         """
@@ -1356,8 +1424,10 @@ class TextureModder(BaseModder):
         """
         re = np.r_[((w + 1) // 2) * [0, 1]]
         ro = np.r_[((w + 1) // 2) * [1, 0]]
-        cbd1 = np.expand_dims(np.row_stack(((h + 1) // 2) * [re, ro]), -1)[:h, :w]
-        cbd2 = np.expand_dims(np.row_stack(((h + 1) // 2) * [ro, re]), -1)[:h, :w]
+        cbd1 = np.expand_dims(np.row_stack(
+            ((h + 1) // 2) * [re, ro]), -1)[:h, :w]
+        cbd2 = np.expand_dims(np.row_stack(
+            ((h + 1) // 2) * [ro, re]), -1)[:h, :w]
         return cbd1, cbd2
 
 
@@ -1417,6 +1487,7 @@ class PhysicalParameterModder(BaseModder):
             seed used to randomize these modifications without impacting other
             numpy seeds / randomizations
     """
+
     def __init__(self, sim, random_state=None):
         super().__init__(sim=sim, random_state=random_state)
 

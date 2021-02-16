@@ -1,47 +1,88 @@
-<mujoco model="lumi_with_table v200">
+<mujoco model="lab_arena">
 <compiler meshdir="../meshes"/>
     <asset>
         <texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" width="512" height="512"/>
         <material name="MatGnd" reflectance="0.5" texture="texplane" texrepeat="1 1" texuniform="true" />
         <mesh name="table" file="../meshes/table.stl" />
         <texture name="white_borders" type="2d" file="../textures/white_borders.png"/>
-        <material name="white_borders" texture="white_borders"/>
-    </asset>
+        <texture name="white" type="2d" file="../textures/white-plaster.png"/>
+        <texture name="clay" type="2d" file="../textures/clay.png"/>
+        <material name="white" texture="white"/>
+        <material name="clay" texture="clay"/>
+        <texture builtin="gradient" height="256" rgb1=".9 .9 1." rgb2=".2 .3 .4" type="skybox" width="256"/>
+        <texture file="../textures/wood-tiles.png" type="2d" name="texplane"/>
+        <material name="floorplane" reflectance="0.01" shininess="0.0" specular="0.0" texrepeat="2 2" texture="texplane" texuniform="true"/>
+        <!-- plaster walls -->
+        <texture file="../textures/cream-plaster.png" type="2d" name="tex-cream-plaster"/>
+        <material name="walls_mat" reflectance="0.0" shininess="0.1" specular="0.1" texrepeat="3 3" texture="tex-cream-plaster" texuniform="true" />
+
+        <texture name="texsponge" type="2d" file="/Users/juliushietala/robotics/jang/mujoco-py/cloth_red.png"/>
+        <material name="matsponge" texture="texsponge" specular="0.3"/>
+
+  </asset>
 
 
 
     <worldbody>
 
-        <light diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="0 0 4.0" specular="0.3 0.3 0.3" />
+        <light name="foo" diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="1 1 4.0" specular="0.3 0.3 0.3" castshadow="true"/>
+        <light name="bar" diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="-3. -3. 4.0" specular="0.3 0.3 0.3" castshadow="true"/>
         <geom name="ground" pos="0 0 0" size="5 5 10" type="plane" contype="1" conaffinity="1" />
 
         <body name="tabletop" pos="0 0 0">
-            <geom type="box" pos="0 0 0" size="0.3 0.3 0.14" group="1" />
+            <geom name="la_tabla_col" type="box" pos="0 0 0" size="0.3 0.6 0.14" group="0" />
+            <geom name="la_tabla_vis" type="box" material="clay" pos="0 0 0" size="0.3 0.6 0.14" group="1" />
         </body>
-
-        <body pos="0.02 -0.105 0.14">
-            <composite type="grid" count="9 9 1" spacing="0.02"  >
-                    <joint kind="main" damping="0.001" stiffness="0.001"/>
-                    <tendon width="0.001" kind="shear" damping="0.001" stiffness="0.001" /> 
-                    <!--<skin material="white_borders" texcoord="true" inflate="0.0002" subgrid="2"/> -->
-                    <geom group="0" type="capsule" size="0.005" rgba=".8 .2 .1 1" friction='1.5 1.5 1.5' solref='0.01 1' solimp='0.99 0.99 0.01' condim='4' />
+        
+        <!--
+        <body name="B4_4" pos="0.02 -0.105 0.14">
+            <freejoint/>
+            <composite type="cloth" count="9 9 1" spacing="0.05" flatinertia="0.01">
+                <joint kind="main" damping="0.001"/>
+                <geom group="0" type="capsule" size="0.015 0.01" rgba=".8 .2 .1 1"/>
             </composite>
-        </body>
+        </body> -->
+        
+        <!--<body pos="0 0 0">
+        <freejoint/> -->
+            <body euler="0 0 0" pos="-0.07 -0.195 0.14">
+                <!--<geom euler="0 0 0.8" pos="0 0 0.0025" rgba="0.1 0.5 0.7 1" group="0" type="box" size="0.01 0.01 0.01" condim='6' friction="1 1 1"/> -->
+
+                <composite type="grid" count="9 9 1" spacing="0.02" offset="0.09 0.09 0"  >
+                    <joint kind="main" damping="0.001" stiffness="0.001" />
+                    <tendon width="0.001" kind="shear" damping="0.001" stiffness="0.001" />
+                    <!--<pin coord="0 0"/> -->
+                    <skin material="white" texcoord="true" inflate="0.001" subgrid="2"/>
+                    <geom group="0" type="sphere" size="0.005" rgba=".8 .2 .1 1" friction='1.5 1.5 1.5' solref='0.01 1' solimp='0.99 0.99 0.01' condim='4' />
+                </composite>
+            </body>
+        <!--</body> -->
+        <!--
+        <body pos="0.22 -0.305 0.14">
+            <composite type="grid" prefix="C" count="11 11 1" spacing="0.03" flatinertia="0.01" >
+                <joint kind="main" damping="0.003" stiffness="0.001"/>
+                <tendon width="0.001" kind="shear" stiffness="0.001" damping="0.002" />
+                <skin material="matsponge" texcoord="true" inflate="0.002" subgrid="2"/>
+                <geom group="0" type="sphere" size="0.004" rgba=".8 .2 .1 1" mass="0.008" friction="1.55 1.55 1.5" material="floor_mat_1"/>
+            </composite>
+        </body> -->
+
+
+        <!--
         <site name="target0" pos="0 0 0.3" size="0.005 0.005 0.005" rgba="0 0 1 1" type="sphere"></site>
-        <site name="target1" pos="0 0 0.4" size="0.005 0.005 0.005" rgba="0 0 1 1" type="sphere"></site>
+        <site name="target1" pos="0 0 0.4" size="0.005 0.005 0.005" rgba="0 0 1 1" type="sphere"></site> -->
 
         <!-- front view -->
         <camera mode="fixed" name="frontview" pos="1.6 0 1.45" quat="0.56 0.43 0.43 0.56"/>
-        <!-- bird view -->
-        <camera mode="fixed" name="birdview" pos="-0.2 0 3.0" quat="0.7071 0 0 0.7071"/>
-        <!-- agent view -->
-        <camera mode="fixed" name="agentview" pos="0.5 0 1.35" quat="0.653 0.271 0.271 0.653"/>
-        <!-- side view -->
-        <camera mode="fixed" name="sideview" pos="-0.05651774593317116 1.2761224129427358 1.4879572214102434" quat="0.009905065491771751 0.006877963156909582 0.5912228352893879 0.806418094001364" />
+        <!--cloth view -->
+        <camera mode="fixed" name="clothview" pos="0.21 -0.12 0.35" quat="0.653 0.271 0.271 0.653"/>
+
     </worldbody>
 
     <equality>
-            <distance solref="0.001 1" geom1="G0_8" geom2="gripper0_grip_geom" />
+            <distance distance="0.001" solref="0.1 0.1" geom1="G0_8" geom2="gripper0_grip_geom" />
+            <!--<weld solref="0.001 1" body1="gripper0_rightfinger" body2="B0_8" ></weld> -->
+            <!--<weld solref="0.001 1" body1="B0_8" body2="gripper0_grip_body" /> -->
     </equality>
 
 </mujoco>

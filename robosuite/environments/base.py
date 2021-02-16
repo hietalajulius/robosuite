@@ -48,7 +48,8 @@ class EnvMeta(type):
         cls = super().__new__(meta, name, bases, class_dict)
 
         # List all environments that should not be registered here.
-        _unregistered_envs = ["MujocoEnv", "RobotEnv", "ManipulationEnv", "SingleArmEnv", "TwoArmEnv"]
+        _unregistered_envs = ["MujocoEnv", "RobotEnv",
+                              "ManipulationEnv", "SingleArmEnv", "TwoArmEnv"]
 
         if cls.__name__ not in _unregistered_envs:
             register_env(cls)
@@ -98,7 +99,7 @@ class MujocoEnv(metaclass=EnvMeta):
         self,
         has_renderer=False,
         has_offscreen_renderer=True,
-        render_camera="frontview",
+        render_camera="clothview",
         render_collision_mesh=False,
         render_visual_mesh=True,
         render_gpu_device_id=-1,
@@ -109,7 +110,8 @@ class MujocoEnv(metaclass=EnvMeta):
     ):
         # First, verify that both the on- and off-screen renderers are not being used simultaneously
         if has_renderer is True and has_offscreen_renderer is True:
-            raise ValueError("the onscreen and offscreen renderers cannot be used simultaneously.")
+            raise ValueError(
+                "the onscreen and offscreen renderers cannot be used simultaneously.")
 
         # Rendering-specific attributes
         self.has_renderer = has_renderer
@@ -121,18 +123,22 @@ class MujocoEnv(metaclass=EnvMeta):
         self.viewer = None
 
         # Simulation-specific attributes
-        self._observables = {}                      # Maps observable names to observable objects
-        self._obs_cache = {}                        # Maps observable names to pre-/partially-computed observable values
+        # Maps observable names to observable objects
+        self._observables = {}
+        # Maps observable names to pre-/partially-computed observable values
+        self._obs_cache = {}
         self.control_freq = control_freq
         self.horizon = horizon
         self.ignore_done = ignore_done
         self.hard_reset = hard_reset
-        self._model_postprocessor = None            # Function to post-process model after load_model() call
+        # Function to post-process model after load_model() call
+        self._model_postprocessor = None
         self.model = None
         self.cur_time = None
         self.model_timestep = None
         self.control_timestep = None
-        self.deterministic_reset = False            # Whether to add randomized resetting of objects / robot joints
+        # Whether to add randomized resetting of objects / robot joints
+        self.deterministic_reset = False
 
         # Load the model
         self._load_model()
@@ -162,7 +168,8 @@ class MujocoEnv(metaclass=EnvMeta):
             raise ValueError("Invalid simulation timestep defined!")
         self.control_freq = control_freq
         if control_freq <= 0:
-            raise SimulationError("Control frequency {} is invalid".format(control_freq))
+            raise SimulationError(
+                "Control frequency {} is invalid".format(control_freq))
         self.control_timestep = 1. / control_freq
 
     def set_model_postprocessor(self, postprocessor):
@@ -213,7 +220,8 @@ class MujocoEnv(metaclass=EnvMeta):
             xml_string (str): If specified, creates MjSim object from this filepath
         """
         # if we have an xml string, use that to create the sim. Otherwise, use the local model
-        self.mjpy_model = load_model_from_xml(xml_string) if xml_string else self.model.get_model(mode="mujoco_py")
+        self.mjpy_model = load_model_from_xml(
+            xml_string) if xml_string else self.model.get_model(mode="mujoco_py")
 
         # Create the simulation instance and run a single step to make sure changes have propagated through sim state
         self.sim = MjSim(self.mjpy_model)
@@ -248,11 +256,13 @@ class MujocoEnv(metaclass=EnvMeta):
             # If we're using hard reset, must re-update sensor object references
             _observables = self._setup_observables()
             for obs_name, obs in _observables.items():
-                self.modify_observable(observable_name=obs_name, attribute="sensor", modifier=obs._sensor)
+                self.modify_observable(
+                    observable_name=obs_name, attribute="sensor", modifier=obs._sensor)
         # Make sure that all sites are toggled OFF by default
-        self.visualize(vis_settings={vis: False for vis in self._visualizations})
+        self.visualize(
+            vis_settings={vis: False for vis in self._visualizations})
         # Return new observations
-        return self._get_observations()
+        return self._get_observation()
 
     def _reset_internal(self):
         """Resets simulation internal configurations."""
@@ -260,8 +270,10 @@ class MujocoEnv(metaclass=EnvMeta):
         # create visualization screen or renderer
         if self.has_renderer and self.viewer is None:
             self.viewer = MujocoPyRenderer(self.sim)
-            self.viewer.viewer.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
-            self.viewer.viewer.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
+            self.viewer.viewer.vopt.geomgroup[0] = (
+                1 if self.render_collision_mesh else 0)
+            self.viewer.viewer.vopt.geomgroup[1] = (
+                1 if self.render_visual_mesh else 0)
 
             # hiding the overlay speeds up rendering significantly
             self.viewer.viewer._hide_overlay = True
@@ -272,14 +284,19 @@ class MujocoEnv(metaclass=EnvMeta):
 
             # Set the camera angle for viewing
             if self.render_camera is not None:
-                self.viewer.set_camera(camera_id=self.sim.model.camera_name2id(self.render_camera))
+                self.viewer.set_camera(
+                    camera_id=self.sim.model.camera_name2id(self.render_camera))
 
         elif self.has_offscreen_renderer:
             if self.sim._render_context_offscreen is None:
-                render_context = MjRenderContextOffscreen(self.sim, device_id=self.render_gpu_device_id)
+                render_context = MjRenderContextOffscreen(
+                    self.sim, device_id=self.render_gpu_device_id)
                 self.sim.add_render_context(render_context)
-            self.sim._render_context_offscreen.vopt.geomgroup[0] = (1 if self.render_collision_mesh else 0)
-            self.sim._render_context_offscreen.vopt.geomgroup[1] = (1 if self.render_visual_mesh else 0)
+            # TODO: geom group stuff here
+            self.sim._render_context_offscreen.vopt.geomgroup[0] = (
+                1 if self.render_collision_mesh else 0)
+            self.sim._render_context_offscreen.vopt.geomgroup[1] = (
+                1 if self.render_visual_mesh else 0)
 
         # additional housekeeping
         self.sim_state_initial = self.sim.get_state()
@@ -298,9 +315,10 @@ class MujocoEnv(metaclass=EnvMeta):
         Updates all observables in this environment
         """
         for observable in self._observables.values():
-            observable.update(timestep=self.model_timestep, obs_cache=self._obs_cache)
+            observable.update(timestep=self.model_timestep,
+                              obs_cache=self._obs_cache)
 
-    def _get_observations(self):
+    def _get_observation(self):
         """
         Grabs observations from the environment.
 
@@ -320,7 +338,8 @@ class MujocoEnv(metaclass=EnvMeta):
                 if modality not in obs_by_modality:
                     obs_by_modality[modality] = []
                 # Make sure all observations are numpy arrays so we can concatenate them
-                array_obs = [obs] if type(obs) in {int, float} or not obs.shape else obs
+                array_obs = [obs] if type(
+                    obs) in {int, float} or not obs.shape else obs
                 obs_by_modality[modality].append(np.array(array_obs))
 
         # Add in modality observations
@@ -370,23 +389,25 @@ class MujocoEnv(metaclass=EnvMeta):
             self.sim.step()
             self._update_observables()
             policy_step = False
-        #self.log_joint_vals()
-        #self.log_site_vals()
+        # self.log_joint_vals()
+        # self.log_site_vals()
 
         # Note: this is done all at once to avoid floating point inaccuracies
         self.cur_time += self.control_timestep
-        obs = self._get_observations()
+        obs = self._get_observation()
         reward, done, info = self._post_action(action, obs)
         return obs, reward, done, info
-    
+
     def log_site_vals(self):
-        print("Site pos", self.sim.data.get_site_xpos("gripper0_grip_site").copy())
+        print("Site pos", self.sim.data.get_site_xpos(
+            "gripper0_grip_site").copy())
 
     def log_joint_vals(self):
         joint_names = np.array(
             ["robot0_joint" + str(name_idx) for name_idx in range(1, 8)])
         for joint_name in joint_names:
-            print(f"{joint_name} Joint val {self.sim.data.get_joint_qpos(joint_name)}")
+            print(
+                f"{joint_name} Joint val {self.sim.data.get_joint_qpos(joint_name)}")
         print("------------------------------")
 
     def _pre_action(self, action, policy_step=False):
@@ -451,7 +472,7 @@ class MujocoEnv(metaclass=EnvMeta):
         Returns:
             OrderedDict: Observations from the environment
         """
-        observation = self._get_observations()
+        observation = self._get_observation()
         return observation
 
     def clear_objects(self, object_names):
@@ -463,10 +484,12 @@ class MujocoEnv(metaclass=EnvMeta):
         Args:
             object_names (str or list of str): Name of object(s) to remove from the task workspace
         """
-        object_names = {object_names} if type(object_names) is str else set(object_names)
+        object_names = {object_names} if type(
+            object_names) is str else set(object_names)
         for obj in self.model.mujoco_objects:
             if obj.name in object_names:
-                self.sim.data.set_joint_qpos(obj.joints[0], np.array((10, 10, 10, 1, 0, 0, 0)))
+                self.sim.data.set_joint_qpos(
+                    obj.joints[0], np.array((10, 10, 10, 1, 0, 0, 0)))
 
     def visualize(self, vis_settings):
         """
@@ -530,10 +553,12 @@ class MujocoEnv(metaclass=EnvMeta):
         for contact in self.sim.data.contact[: self.sim.data.ncon]:
             # check contact geom in geoms
             c1_in_g1 = self.sim.model.geom_id2name(contact.geom1) in geoms_1
-            c2_in_g2 = self.sim.model.geom_id2name(contact.geom2) in geoms_2 if geoms_2 is not None else True
+            c2_in_g2 = self.sim.model.geom_id2name(
+                contact.geom2) in geoms_2 if geoms_2 is not None else True
             # check contact geom in geoms (flipped)
             c2_in_g1 = self.sim.model.geom_id2name(contact.geom2) in geoms_1
-            c1_in_g2 = self.sim.model.geom_id2name(contact.geom1) in geoms_2 if geoms_2 is not None else True
+            c1_in_g2 = self.sim.model.geom_id2name(
+                contact.geom1) in geoms_2 if geoms_2 is not None else True
             if (c1_in_g1 and c2_in_g2) or (c1_in_g2 and c2_in_g1):
                 return True
         return False
@@ -554,11 +579,13 @@ class MujocoEnv(metaclass=EnvMeta):
         """
         # Make sure model is MujocoModel type
         assert isinstance(model, MujocoModel), \
-            "Inputted model must be of type MujocoModel; got type {} instead!".format(type(model))
+            "Inputted model must be of type MujocoModel; got type {} instead!".format(
+                type(model))
         contact_set = set()
         for contact in self.sim.data.contact[: self.sim.data.ncon]:
             # check contact geom in geoms; add to contact set if match is found
-            g1, g2 = self.sim.model.geom_id2name(contact.geom1), self.sim.model.geom_id2name(contact.geom2)
+            g1, g2 = self.sim.model.geom_id2name(
+                contact.geom1), self.sim.model.geom_id2name(contact.geom2)
             if g1 in model.contact_geoms and g2 not in model.contact_geoms:
                 contact_set.add(g2)
             elif g2 in model.contact_geoms and g1 not in model.contact_geoms:
@@ -625,9 +652,9 @@ class MujocoEnv(metaclass=EnvMeta):
         Destroys the current mujoco renderer instance if it exists
         """
         # if there is an active viewer window, destroy it
-        #if self.viewer is not None:
-            #self.viewer.close()  # change this to viewer.finish()?
-            #self.viewer = None
+        # if self.viewer is not None:
+        # self.viewer.close()  # change this to viewer.finish()?
+        #self.viewer = None
         pass
 
     def close(self):

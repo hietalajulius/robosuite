@@ -61,7 +61,7 @@ class Cloth(SingleArmEnv):
         object_type=None,
         has_renderer=False,
         has_offscreen_renderer=False,
-        render_camera="sideview",
+        render_camera="frontview",
         render_collision_mesh=False,
         render_visual_mesh=True,
         render_gpu_device_id=-1,
@@ -69,12 +69,11 @@ class Cloth(SingleArmEnv):
         horizon=1000,
         ignore_done=False,
         hard_reset=False,
-        camera_names="agentview",
+        camera_names="clothview",
         camera_heights=256,
         camera_widths=256,
         camera_depths=False,
-    ):  
-
+    ):
 
         super().__init__(
             robots=robots,
@@ -100,7 +99,7 @@ class Cloth(SingleArmEnv):
         )
 
         self.single_goal_dim = 3
-        self.sparse_dense=sparse_dense
+        self.sparse_dense = sparse_dense
         self.constraints = constraints
         self.goal_noise_range = goal_noise_range
         self.velocity_in_obs = velocity_in_obs
@@ -126,14 +125,8 @@ class Cloth(SingleArmEnv):
         self.current_tendon_stiffness = self.min_stiffness
         self.current_tendon_damping = self.min_damping
 
-
         self.seed(random_seed)
 
-        self._viewers = {}
-        self.metadata = {
-            'render.modes': ['human', 'rgb_array']
-        }
-        
         self.site_names = ["S0_0", "S4_0", "S8_0", "S0_4",
                            "S0_8", "S4_8", "S8_8", "S8_4", 'gripper0_grip_site']
         self.joint_names = np.array(
@@ -143,37 +136,37 @@ class Cloth(SingleArmEnv):
         self.reward_function = reward_calculation.get_reward_function(
             self.constraints, self.single_goal_dim, self.sparse_dense)
 
-        self.action_space = gym.spaces.Box(-max_action, max_action, shape=(3,), dtype='float32')
-        obs = self._get_observations()
+        self.action_space = gym.spaces.Box(-max_action,
+                                           max_action, shape=(3,), dtype='float32')
+        obs = self._get_observation()
         if self.pixels:
             self.observation_space = gym.spaces.Dict(dict(
                 desired_goal=gym.spaces.Box(-np.inf, np.inf,
-                                        shape=obs['achieved_goal'].shape, dtype='float32'),
+                                            shape=obs['achieved_goal'].shape, dtype='float32'),
                 achieved_goal=gym.spaces.Box(-np.inf, np.inf,
-                                         shape=obs['achieved_goal'].shape, dtype='float32'),
+                                             shape=obs['achieved_goal'].shape, dtype='float32'),
                 observation=gym.spaces.Box(-np.inf, np.inf,
-                                       shape=obs['observation'].shape, dtype='float32'),
+                                           shape=obs['observation'].shape, dtype='float32'),
                 robot_observation=gym.spaces.Box(-np.inf, np.inf,
-                                             shape=obs['robot_observation'].shape, dtype='float32'),
+                                                 shape=obs['robot_observation'].shape, dtype='float32'),
                 model_params=gym.spaces.Box(-np.inf, np.inf,
-                                        shape=obs['model_params'].shape, dtype='float32'),
+                                            shape=obs['model_params'].shape, dtype='float32'),
                 image=gym.spaces.Box(-np.inf, np.inf,
-                                 shape=obs['image'].shape, dtype='float32')
+                                     shape=obs['image'].shape, dtype='float32')
             ))
         else:
             self.observation_space = gym.spaces.Dict(dict(
                 desired_goal=gym.spaces.Box(-np.inf, np.inf,
-                                        shape=obs['achieved_goal'].shape, dtype='float32'),
+                                            shape=obs['achieved_goal'].shape, dtype='float32'),
                 achieved_goal=gym.spaces.Box(-np.inf, np.inf,
-                                         shape=obs['achieved_goal'].shape, dtype='float32'),
+                                             shape=obs['achieved_goal'].shape, dtype='float32'),
                 observation=gym.spaces.Box(-np.inf, np.inf,
-                                       shape=obs['observation'].shape, dtype='float32'),
+                                           shape=obs['observation'].shape, dtype='float32'),
                 robot_observation=gym.spaces.Box(-np.inf, np.inf,
-                                             shape=obs['robot_observation'].shape, dtype='float32'),
+                                                 shape=obs['robot_observation'].shape, dtype='float32'),
                 model_params=gym.spaces.Box(-np.inf, np.inf,
-                                        shape=obs['model_params'].shape, dtype='float32')
+                                            shape=obs['model_params'].shape, dtype='float32')
             ))
-
 
         self.initted = True
         if self.randomize_params:
@@ -182,7 +175,7 @@ class Cloth(SingleArmEnv):
         if self.randomize_geoms:
             self.set_geom_params()
 
-        #utils.EzPickle.__init__(self)
+        # utils.EzPickle.__init__(self)
 
     def set_geom_params(self):
         for geom_name in self.sim.model.geom_names:
@@ -206,63 +199,28 @@ class Cloth(SingleArmEnv):
 
         self.sim.forward()
 
-    def render(self, mode='human', width=1000, height=1000, image_capture=False, filename=None):
-        if mode == 'rgb_array':
-            self._get_viewer(mode).render(width, height)
-            # window size used for old mujoco-py:
-            data = self._get_viewer(mode).read_pixels(
-                width, height, depth=False)
-            # original image is upside-down, so flip it
-            image_obs = data[::-1, :, :]
-            if image_capture and not filename is None:
-                image_obs_save = cv2.cvtColor(image_obs, cv2.COLOR_BGR2GRAY)
-                cv2.imwrite(filename, image_obs_save)
-            return image_obs
-        elif mode == 'human':
-            self._get_viewer(mode).render()
-
-    def _get_viewer(self, mode):
-        self.viewer = self._viewers.get(mode)
-        if self.viewer is None:
-            if mode == 'human':
-                self.viewer = mujoco_py.MjViewer(
-                    self.sim, self.key_callback_function)
-            elif mode == 'rgb_array':
-                self.viewer = mujoco_py.MjRenderContextOffscreen(
-                    self.sim, device_id=-1)
-            self._viewer_setup()
-            self._viewers[mode] = self.viewer
-        return self.viewer
-
-    def _viewer_setup(self):
-        lookat = np.array([0.02, -0.105, 0.14])
-
-        for idx, value in enumerate(lookat):
-            self.viewer.cam.lookat[idx] = value
-
-        self.viewer.cam.distance = .35
-        self.viewer.cam.azimuth = 180
-        self.viewer.cam.elevation = -70.
-
     def set_aux_positions(self, corner1, corner2, corner3, corner4):
-        self.viewer.add_marker(size=np.array(
+        self.sim._render_context_offscreen.add_marker(size=np.array(
             [.001, .001, .001]), pos=corner1, label="corner1")
-        self.viewer.add_marker(size=np.array(
+        self.sim._render_context_offscreen.add_marker(size=np.array(
             [.001, .001, .001]), pos=corner2, label="corner2")
-        self.viewer.add_marker(size=np.array(
+        self.sim._render_context_offscreen.add_marker(size=np.array(
             [.001, .001, .001]), pos=corner3, label="corner3")
-        self.viewer.add_marker(size=np.array(
+        self.sim._render_context_offscreen.add_marker(size=np.array(
             [.001, .001, .001]), pos=corner4, label="corner4")
 
     def clear_aux_positions(self):
-        del self.viewer._markers[:]
+        del self.sim._render_context_offscreen._markers[:]
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         return self.reward_function(achieved_goal, desired_goal, info)
 
     def _pre_action(self, action, policy_step=False):
-        act = np.zeros(7)
-        act[:3] = action.copy()
+        if action.shape[0] == 3:
+            act = np.zeros(7)
+            act[:3] = action.copy()
+        else:
+            act = action.copy()
         super()._pre_action(act, policy_step)
 
     def _post_action(self, action, obs):
@@ -280,14 +238,14 @@ class Cloth(SingleArmEnv):
                 "acceleration_over_limit": 0,
                 "control_penalty": 0.0,
                 'is_success': done}
-        
-        if done:
-            print("REAL sim ep success", reward, self.current_joint_damping, self.current_joint_stiffness)
 
+        if done:
+            print("REAL sim ep success", reward,
+                  self.current_joint_damping, self.current_joint_stiffness)
 
         return reward, done, info
 
-    def _get_observations(self):
+    def _get_observation(self):
         achieved_goal = np.zeros(self.single_goal_dim*len(self.constraints))
         for i, constraint in enumerate(self.constraints):
             origin = constraint['origin']
@@ -311,7 +269,6 @@ class Cloth(SingleArmEnv):
             obs = pos
             robot_obs = robot_pos
 
-
         if self.randomize_geoms and self.randomize_params:
             model_params = np.array([self.current_joint_stiffness, self.current_joint_damping,
                                      self.current_tendon_stiffness, self.current_tendon_damping, self.current_geom_size])
@@ -330,13 +287,18 @@ class Cloth(SingleArmEnv):
         }
 
         if self.pixels:
-            image_obs = copy.deepcopy(self.render(
-                width=self.image_size, height=self.image_size, mode='rgb_array'))
+            camera_id = self.sim.model.camera_name2id('clothview')
+            self.sim._render_context_offscreen.render(
+                self.image_size, self.image_size, camera_id)
+            image_obs = self.sim._render_context_offscreen.read_pixels(
+                self.image_size, self.image_size, depth=False)
+
+            image_obs = image_obs[::-1, :, :]
 
             image_obs = cv2.cvtColor(image_obs, cv2.COLOR_BGR2GRAY)
 
             observation['image'] = (image_obs / 255).flatten()
-
+        #print("RBO IOBS", robot_pos)
         return observation
 
     def _load_model(self):
@@ -354,13 +316,11 @@ class Cloth(SingleArmEnv):
         # Arena always gets set to zero origin
         mujoco_arena.set_origin([0, 0, 0])
 
-       
         # task includes arena, robot, and objects of interest
         self.model = ManipulationTask(
             mujoco_arena=mujoco_arena,
             mujoco_robots=[robot.robot_model for robot in self.robots]
         )
-
 
     def _create_obj_sensors(self, obj_name, modality="object"):
         """
@@ -392,8 +352,10 @@ class Cloth(SingleArmEnv):
             if any([name not in obs_cache for name in
                     [f"{obj_name}_pos", f"{obj_name}_quat", "world_pose_in_gripper"]]):
                 return np.zeros(3)
-            obj_pose = T.pose2mat((obs_cache[f"{obj_name}_pos"], obs_cache[f"{obj_name}_quat"]))
-            rel_pose = T.pose_in_A_to_pose_in_B(obj_pose, obs_cache["world_pose_in_gripper"])
+            obj_pose = T.pose2mat(
+                (obs_cache[f"{obj_name}_pos"], obs_cache[f"{obj_name}_quat"]))
+            rel_pose = T.pose_in_A_to_pose_in_B(
+                obj_pose, obs_cache["world_pose_in_gripper"])
             rel_pos, rel_quat = T.mat2pose(rel_pose)
             obs_cache[f"{obj_name}_to_{pf}eef_quat"] = rel_quat
             return rel_pos
@@ -404,7 +366,8 @@ class Cloth(SingleArmEnv):
                 f"{obj_name}_to_{pf}eef_quat" in obs_cache else np.zeros(4)
 
         sensors = [obj_pos, obj_quat, obj_to_eef_pos, obj_to_eef_quat]
-        names = [f"{obj_name}_pos", f"{obj_name}_quat", f"{obj_name}_to_{pf}eef_pos", f"{obj_name}_to_{pf}eef_quat"]
+        names = [f"{obj_name}_pos", f"{obj_name}_quat",
+                 f"{obj_name}_to_{pf}eef_pos", f"{obj_name}_to_{pf}eef_quat"]
 
         return sensors, names
 
@@ -426,21 +389,6 @@ class Cloth(SingleArmEnv):
                  self.single_goal_dim] = target_pos + offset
 
         return goal.copy()
-
-
-    def _reset_view(self):
-        targets = ['target0', 'target1']
-        next_target = 0
-        for i, constraint in enumerate(self.constraints):
-            target = constraint['target']
-            origin = constraint['origin']
-            if not target == origin:
-                site_id = self.sim.model.site_name2id(targets[next_target])
-                self.sim.model.site_pos[site_id] = self.goal[i *
-                                                             self.single_goal_dim:(i+1)*self.single_goal_dim]
-                next_target += 1
-
-        self.sim.forward()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -476,8 +424,6 @@ class Cloth(SingleArmEnv):
                 self.current_geom_size = self.np_random.uniform(
                     self.min_geom_size, self.max_geom_size)
                 self.set_geom_params()
-                self._reset_view()
-
 
     def _check_success(self):
         """
@@ -518,5 +464,3 @@ class Cloth(SingleArmEnv):
                 target=self.objects[closest_obj_id].root_body,
                 target_type="body",
             )
-
-

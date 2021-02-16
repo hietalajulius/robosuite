@@ -7,39 +7,43 @@ import numpy as np
 from robosuite.wrappers import Wrapper
 from robosuite.utils.mjmod import TextureModder, LightingModder, CameraModder
 
+
+from mujoco_py.modder import TextureModder as CustomTextureModder
+
 DEFAULT_COLOR_ARGS = {
-    'geom_names' : None, # all geoms are randomized
-    'randomize_local' : True, # sample nearby colors
-    'randomize_material' : True, # randomize material reflectance / shininess / specular
-    'local_rgb_interpolation' : 0.2,
-    'local_material_interpolation' : 0.3,
-    'texture_variations' : ['rgb', 'checker', 'noise', 'gradient'], # all texture variation types
-    'randomize_skybox' : True, # by default, randomize skybox too
+    'geom_names': None,  # all geoms are randomized
+    'randomize_local': True,  # sample nearby colors
+    'randomize_material': True,  # randomize material reflectance / shininess / specular
+    'local_rgb_interpolation': 0.2,
+    'local_material_interpolation': 0.3,
+    # all texture variation types
+    'texture_variations': ['rgb', 'checker', 'noise', 'gradient'],
+    'randomize_skybox': True,  # by default, randomize skybox too
 }
 
 DEFAULT_CAMERA_ARGS = {
-    'camera_names' : None, # all cameras are randomized
-    'randomize_position' : True,
-    'randomize_rotation' : True,
-    'randomize_fovy' : True,
-    'position_perturbation_size' : 0.01,
-    'rotation_perturbation_size' : 0.087,
-    'fovy_perturbation_size' : 5.,
+    'camera_names': None,  # all cameras are randomized
+    'randomize_position': True,
+    'randomize_rotation': True,
+    'randomize_fovy': True,
+    'position_perturbation_size': 0.01,
+    'rotation_perturbation_size': 0.087,
+    'fovy_perturbation_size': 5.,
 }
 
 DEFAULT_LIGHTING_ARGS = {
-    'light_names' : None, # all lights are randomized
-    'randomize_position' : True,
-    'randomize_direction' : True,
-    'randomize_specular' : True,
-    'randomize_ambient' : True,
-    'randomize_diffuse' : True,
-    'randomize_active' : True,
-    'position_perturbation_size' : 0.1,
-    'direction_perturbation_size' : 0.35,
-    'specular_perturbation_size' : 0.1,
-    'ambient_perturbation_size' : 0.1,
-    'diffuse_perturbation_size' : 0.1,
+    'light_names': None,  # all lights are randomized
+    'randomize_position': True,
+    'randomize_direction': True,
+    'randomize_specular': True,
+    'randomize_ambient': True,
+    'randomize_diffuse': True,
+    'randomize_active': True,
+    'position_perturbation_size': 0.1,
+    'direction_perturbation_size': 0.35,
+    'specular_perturbation_size': 0.1,
+    'ambient_perturbation_size': 0.1,
+    'diffuse_perturbation_size': 0.1,
 }
 
 
@@ -75,13 +79,15 @@ class DomainRandomizationWrapper(Wrapper):
             to 0 if randomization should happen manually (by calling @randomize_domain)
 
     """
+
     def __init__(
-        self, 
+        self,
         env,
         seed=None,
-        randomize_color=True,
+        randomize_color=False,
         randomize_camera=True,
         randomize_lighting=True,
+        custom_randomize_color=True,
         color_randomization_args=DEFAULT_COLOR_ARGS,
         camera_randomization_args=DEFAULT_CAMERA_ARGS,
         lighting_randomization_args=DEFAULT_LIGHTING_ARGS,
@@ -117,7 +123,7 @@ class DomainRandomizationWrapper(Wrapper):
             self.modders.append(self.tex_modder)
 
         if self.randomize_camera:
-            self.camera_modder =  CameraModder(
+            self.camera_modder = CameraModder(
                 sim=self.env.sim,
                 random_state=self.random_state,
                 **self.camera_randomization_args,
@@ -131,6 +137,11 @@ class DomainRandomizationWrapper(Wrapper):
                 **self.lighting_randomization_args,
             )
             self.modders.append(self.light_modder)
+
+        self.custom_randomize_color = custom_randomize_color
+
+        if self.custom_randomize_color:
+            self.custom_color_modder = CustomTextureModder(env.sim)
 
         self.save_default_domain()
 
@@ -156,6 +167,17 @@ class DomainRandomizationWrapper(Wrapper):
         # update sims
         for modder in self.modders:
             modder.update_sim(self.env.sim)
+
+        if self.custom_randomize_color:
+            skin_mat = self.env.sim.model.skin_matid[0]
+            for name in ['la_tabla_vis', 'robot0_link0_visual', 'robot0_link1_visual', 'robot0_link2_visual', 'robot0_link3_visual', 'robot0_link4_visual', 'robot0_link5_visual', 'robot0_link6_visual', 'robot0_link7_visual', 'gripper0_hand_visual', 'gripper0_finger1_visual', 'gripper0_finger2_visual']:
+                self.custom_color_modder.whiten_materials()
+                self.custom_color_modder.set_checker(
+                    name, (255, 0, 0), (0, 0, 0))
+                self.custom_color_modder.rand_all(name)
+            self.custom_color_modder.set_checker(
+                'skin', (255, 0, 0), (0, 0, 0))
+            self.custom_color_modder.rand_all('skin')
 
         if self.randomize_on_reset:
             # domain randomize + regenerate observation
