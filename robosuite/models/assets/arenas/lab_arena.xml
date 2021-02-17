@@ -32,7 +32,7 @@
 
         <body name="tabletop" pos="0 0 0">
             <geom name="la_tabla_col" type="box" pos="0 0 0" size="0.3 0.6 0.14" group="0" />
-            <geom name="la_tabla_vis" type="box" material="clay" pos="0 0 0" size="0.3 0.6 0.14" group="1" />
+            <geom name="la_tabla_vis" type="box" rgba="1 1 1 0.1" pos="0 0 0" size="0.3 0.6 0.14" group="1" />
         </body>
         
         <!--
@@ -53,7 +53,7 @@
                     <joint kind="main" damping="0.001" stiffness="0.001" />
                     <tendon width="0.001" kind="shear" damping="0.001" stiffness="0.001" />
                     <!--<pin coord="0 0"/> -->
-                    <skin material="white_borders" texcoord="true" inflate="0.001" subgrid="2"/>
+                    <skin material="white_borders" texcoord="true" inflate="0.002" subgrid="2"/>
                     <geom group="0" type="sphere" size="0.005" rgba=".8 .2 .1 1" friction='1.5 1.5 1.5' solref='0.01 1' solimp='0.99 0.99 0.01' condim='4' />
                 </composite>
             </body>
