@@ -20,9 +20,9 @@
             <geom pos="0 0 0." quat="0.707107 0 0 0.707107" type="mesh" contype="0" conaffinity="0" group="1" mesh="hand_vis" name="hand_visual" rgba="1 1 1 1" />
             <geom pos="0 0 0." quat="0.707107 0 0 0.707107" type="mesh" mesh="hand"  group="0" name="hand_collision"/>
             <!-- This site was added for visualization. -->
-            <site name="grip_site" pos="0 0 0.13" size="0.001 0.001 0.001" rgba="1 0 0 0.5" type="sphere" group="1"/>
+            <site name="grip_site" pos="0 0 0.16" size="0.0025 0.0025 0.0025" rgba="1 0 0 0.5" type="sphere" group="1"/>
 
-            <geom name="grip_geom" pos="0 0 0.13" size="0.001 0.001 0.001" rgba="1 0 0 0.5" type="sphere" group="1"/>
+            <geom name="grip_geom" pos="0 0 0.16" size="0.0025 0.0025 0.0025" rgba="1 0 0 0.5" type="sphere" group="1"/>
 
             <!-- This site was added for visualization. -->
             <!--<site name="grip_site_cylinder" pos="0 0 0.1399" size="0.005 10" rgba="0 1 0 0.3" type="cylinder" group="1"/>-->

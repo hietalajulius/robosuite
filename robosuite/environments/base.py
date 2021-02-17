@@ -99,7 +99,7 @@ class MujocoEnv(metaclass=EnvMeta):
         self,
         has_renderer=False,
         has_offscreen_renderer=True,
-        render_camera="clothview",
+        render_camera="clothview2",
         render_collision_mesh=False,
         render_visual_mesh=True,
         render_gpu_device_id=-1,

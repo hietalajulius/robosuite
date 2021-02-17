@@ -69,7 +69,7 @@ class Cloth(SingleArmEnv):
         horizon=1000,
         ignore_done=False,
         hard_reset=False,
-        camera_names="clothview",
+        camera_names="clothview2",
         camera_heights=256,
         camera_widths=256,
         camera_depths=False,
@@ -287,7 +287,8 @@ class Cloth(SingleArmEnv):
         }
 
         if self.pixels:
-            camera_id = self.sim.model.camera_name2id('clothview')
+            camera_id = self.sim.model.camera_name2id(
+                'clothview2')  # TODO: parametrize camera
             self.sim._render_context_offscreen.render(
                 self.image_size, self.image_size, camera_id)
             image_obs = self.sim._render_context_offscreen.read_pixels(

@@ -34,7 +34,7 @@ class Panda(ManipulatorModel):
     def init_qpos(self):
         # return np.array([0, np.pi / 16.0, 0.00, -np.pi / 2.0 - np.pi / 3.0, 0.00, np.pi - 0.2, np.pi/4])
         # return np.array([-0.102, -0.116, -0.364, -2.68, -0.08, 2.58, -0.396])
-        return np.array([0.14897648, -0.08106845,  0.01736963, -2.55347206, -0.04584899,  2.46771646, -0.80915486])
+        return np.array([0.149, - 0.134, 0.021, - 2.596, - 0.043, 2.458, - 0.808])
         q = np.zeros(7)
         q[1] = 1
         return q
