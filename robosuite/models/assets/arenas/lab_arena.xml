@@ -16,8 +16,8 @@
         <texture file="../textures/cream-plaster.png" type="2d" name="tex-cream-plaster"/>
         <material name="walls_mat" reflectance="0.0" shininess="0.1" specular="0.1" texrepeat="3 3" texture="tex-cream-plaster" texuniform="true" />
 
-        <texture name="texsponge" type="2d" file="/Users/juliushietala/robotics/jang/mujoco-py/cloth_red.png"/>
-        <material name="matsponge" texture="texsponge" specular="0.3"/>
+        
+        
 
   </asset>
 
