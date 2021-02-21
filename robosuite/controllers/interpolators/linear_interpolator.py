@@ -74,7 +74,7 @@ class LinearInterpolator(Interpolator):
             self.start = np.zeros(self.dim)
         self.goal = np.array(self.start)
 
-    def set_goal(self, goal):
+    def set_goal(self, goal, ee_position=None):
         """
         Takes a requested (absolute) goal and updates internal parameters for next interpolation step
 
@@ -88,7 +88,11 @@ class LinearInterpolator(Interpolator):
                 goal.shape[0], self.dim))
 
         # Update start and goal
-        self.start = np.array(self.goal)
+        if not ee_position is None:
+            #print("start from ee")
+            self.start = ee_position
+        else:
+            self.start = np.array(self.goal)
         self.goal = np.array(goal)
 
         # Reset interpolation steps
