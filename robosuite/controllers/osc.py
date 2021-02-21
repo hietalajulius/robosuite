@@ -91,7 +91,7 @@ class OperationalSpaceController(Controller):
             to the goal orientation during each timestep between inputted actions
 
         control_ori (bool): Whether inputted actions will control both pos and ori or exclusively pos
-        
+
         control_delta (bool): Whether to control the robot using delta or absolute commands (where absolute commands
             are taken in the world coordinate frame)
 
@@ -104,6 +104,7 @@ class OperationalSpaceController(Controller):
         AssertionError: [Invalid impedance mode]
     """
 
+    # TODO: Parametrize min/max outputs
     def __init__(self,
                  sim,
                  eef_name,
@@ -111,8 +112,8 @@ class OperationalSpaceController(Controller):
                  actuator_range,
                  input_max=1,
                  input_min=-1,
-                 output_max=(0.05, 0.05, 0.05, 0.5, 0.5, 0.5),
-                 output_min=(-0.05, -0.05, -0.05, -0.5, -0.5, -0.5),
+                 output_max=(0.03, 0.03, 0.03, 0.5, 0.5, 0.5),
+                 output_min=(-0.03, -0.03, -0.03, -0.5, -0.5, -0.5),
                  kp=150,
                  damping_ratio=1,
                  impedance_mode="fixed",
@@ -126,7 +127,7 @@ class OperationalSpaceController(Controller):
                  control_ori=True,
                  control_delta=True,
                  uncouple_pos_ori=True,
-                 **kwargs # does nothing; used so no error raised when dict is passed with extra terms used previously
+                 **kwargs  # does nothing; used so no error raised when dict is passed with extra terms used previously
                  ):
 
         super().__init__(
@@ -176,8 +177,10 @@ class OperationalSpaceController(Controller):
             self.control_dim += 6
 
         # limits
-        self.position_limits = np.array(position_limits) if position_limits is not None else position_limits
-        self.orientation_limits = np.array(orientation_limits) if orientation_limits is not None else orientation_limits
+        self.position_limits = np.array(
+            position_limits) if position_limits is not None else position_limits
+        self.orientation_limits = np.array(
+            orientation_limits) if orientation_limits is not None else orientation_limits
 
         # control frequency
         self.control_freq = policy_freq
@@ -220,7 +223,8 @@ class OperationalSpaceController(Controller):
         if self.impedance_mode == "variable":
             damping_ratio, kp, delta = action[:6], action[6:12], action[12:]
             self.kp = np.clip(kp, self.kp_min, self.kp_max)
-            self.kd = 2 * np.sqrt(self.kp) * np.clip(damping_ratio, self.damping_ratio_min, self.damping_ratio_max)
+            self.kd = 2 * np.sqrt(self.kp) * np.clip(damping_ratio,
+                                                     self.damping_ratio_min, self.damping_ratio_max)
         elif self.impedance_mode == "variable_kp":
             kp, delta = action[:6], action[6:]
             self.kp = np.clip(kp, self.kp_min, self.kp_max)
@@ -234,7 +238,8 @@ class OperationalSpaceController(Controller):
                 scaled_delta = self.scale_action(delta)
                 if not self.use_ori:
                     # Set default control for ori since user isn't actively controlling ori
-                    set_ori = np.array([[-1., 0., 0.], [0., 1., 0.], [0., 0., -1.]])
+                    set_ori = np.array(
+                        [[-1., 0., 0.], [0., 1., 0.], [0., 0., -1.]])
             else:
                 scaled_delta = []
         # Else, interpret actions as absolute values
@@ -247,7 +252,8 @@ class OperationalSpaceController(Controller):
 
         # We only want to update goal orientation if there is a valid delta ori value
         # use math.isclose instead of numpy because numpy is slow
-        bools = [0. if math.isclose(elem, 0.) else 1. for elem in scaled_delta[3:]]
+        bools = [0. if math.isclose(
+            elem, 0.) else 1. for elem in scaled_delta[3:]]
         if sum(bools) > 0.:
             self.goal_ori = set_goal_orientation(scaled_delta[3:],
                                                  self.ee_ori_mat,
@@ -262,9 +268,13 @@ class OperationalSpaceController(Controller):
             self.interpolator_pos.set_goal(self.goal_pos)
 
         if self.interpolator_ori is not None:
-            self.ori_ref = np.array(self.ee_ori_mat)  # reference is the current orientation at start
-            self.interpolator_ori.set_goal(orientation_error(self.goal_ori, self.ori_ref))  # goal is the total orientation error
-            self.relative_ori = np.zeros(3)  # relative orientation always starts at 0
+            # reference is the current orientation at start
+            self.ori_ref = np.array(self.ee_ori_mat)
+            # goal is the total orientation error
+            self.interpolator_ori.set_goal(
+                orientation_error(self.goal_ori, self.ori_ref))
+            # relative orientation always starts at 0
+            self.relative_ori = np.zeros(3)
 
     def run_controller(self):
         """
@@ -295,7 +305,8 @@ class OperationalSpaceController(Controller):
 
         if self.interpolator_ori is not None:
             # relative orientation based on difference between current ori and ref
-            self.relative_ori = orientation_error(self.ee_ori_mat, self.ori_ref)
+            self.relative_ori = orientation_error(
+                self.ee_ori_mat, self.ori_ref)
 
             ori_error = self.interpolator_ori.get_interpolated_goal()
         else:
@@ -326,13 +337,15 @@ class OperationalSpaceController(Controller):
         if self.uncoupling:
             decoupled_force = np.dot(lambda_pos, desired_force)
             decoupled_torque = np.dot(lambda_ori, desired_torque)
-            decoupled_wrench = np.concatenate([decoupled_force, decoupled_torque])
+            decoupled_wrench = np.concatenate(
+                [decoupled_force, decoupled_torque])
         else:
             desired_wrench = np.concatenate([desired_force, desired_torque])
             decoupled_wrench = np.dot(lambda_full, desired_wrench)
 
         # Gamma (without null torques) = J^T * F + gravity compensations
-        self.torques = np.dot(self.J_full.T, decoupled_wrench) + self.torque_compensation
+        self.torques = np.dot(
+            self.J_full.T, decoupled_wrench) + self.torque_compensation
 
         # Calculate and add nullspace torques (nullspace_matrix^T * Gamma_null) to final torques
         # Note: Gamma_null = desired nullspace pose torques, assumed to be positional joint control relative
@@ -365,9 +378,13 @@ class OperationalSpaceController(Controller):
             self.interpolator_pos.set_goal(self.goal_pos)
 
         if self.interpolator_ori is not None:
-            self.ori_ref = np.array(self.ee_ori_mat)  # reference is the current orientation at start
-            self.interpolator_ori.set_goal(orientation_error(self.goal_ori, self.ori_ref))  # goal is the total orientation error
-            self.relative_ori = np.zeros(3)  # relative orientation always starts at 0
+            # reference is the current orientation at start
+            self.ori_ref = np.array(self.ee_ori_mat)
+            # goal is the total orientation error
+            self.interpolator_ori.set_goal(
+                orientation_error(self.goal_ori, self.ori_ref))
+            # relative orientation always starts at 0
+            self.relative_ori = np.zeros(3)
 
     @property
     def control_limits(self):
@@ -386,8 +403,10 @@ class OperationalSpaceController(Controller):
                 - (np.array) maximum action values
         """
         if self.impedance_mode == "variable":
-            low = np.concatenate([self.damping_ratio_min, self.kp_min, self.input_min])
-            high = np.concatenate([self.damping_ratio_max, self.kp_max, self.input_max])
+            low = np.concatenate(
+                [self.damping_ratio_min, self.kp_min, self.input_min])
+            high = np.concatenate(
+                [self.damping_ratio_max, self.kp_max, self.input_max])
         elif self.impedance_mode == "variable_kp":
             low = np.concatenate([self.kp_min, self.input_min])
             high = np.concatenate([self.kp_max, self.input_max])

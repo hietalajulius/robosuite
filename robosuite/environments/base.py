@@ -155,6 +155,13 @@ class MujocoEnv(metaclass=EnvMeta):
         # Load observables
         self._observables = self._setup_observables()
 
+        self.prev_joint_vel = np.zeros(7)
+        self.prev_joint_acc = np.zeros(7)
+
+        self.joint_acc_limits = np.array([15, 7.5, 10, 12.5, 15, 20, 20])
+        self.joint_jerk_limits = np.array(
+            [7500, 3750, 5000, 6250, 7500, 10000, 10000])
+
     def initialize_time(self, control_freq):
         """
         Initializes the time constants used for simulation.
@@ -239,6 +246,9 @@ class MujocoEnv(metaclass=EnvMeta):
         """
         # TODO(yukez): investigate black screen of death
         # Use hard reset if requested
+        self.prev_joint_vel = np.zeros(7)
+        self.prev_joint_acc = np.zeros(7)
+
         if self.hard_reset and not self.deterministic_reset:
             self._destroy_viewer()
             self._load_model()
@@ -383,8 +393,36 @@ class MujocoEnv(metaclass=EnvMeta):
 
         # Loop through the simulation at the model timestep rate until we're ready to take the next policy step
         # (as defined by the control frequency specified at the environment level)
+        acc_viols = 0
+        acc_pen = 0
+        jerk_viols = 0
+        jerk_pen = 0
         for i in range(int(self.control_timestep / self.model_timestep)):
             self.sim.forward()
+
+            current_vel = self.robots[0].controller.joint_vel.copy()
+            current_acc = (current_vel - self.prev_joint_vel) / \
+                self.model_timestep
+            current_jerk = (current_acc - self.prev_joint_acc) / \
+                self.model_timestep
+
+            self.prev_joint_vel = current_vel
+            self.prev_joint_acc = current_acc
+
+            acc_over = current_acc < self.joint_acc_limits
+            jerk_over = current_jerk < self.joint_jerk_limits
+            acc_ok = np.all(acc_over)
+            jerk_ok = np.all(jerk_over)
+
+            if not acc_ok:
+                acc_pen += np.max(np.abs(self.joint_acc_limits -
+                                         np.abs(current_acc)))
+                acc_viols += 1
+            if not jerk_ok:
+                jerk_pen += np.max(np.abs(self.joint_jerk_limits -
+                                          np.abs(current_jerk)))
+                jerk_viols += 1
+
             self._pre_action(action, policy_step)
             self.sim.step()
             self._update_observables()
@@ -396,6 +434,11 @@ class MujocoEnv(metaclass=EnvMeta):
         self.cur_time += self.control_timestep
         obs = self._get_observation()
         reward, done, info = self._post_action(action, obs)
+
+        info['acceleration_over_limit'] = acc_viols
+        info['jerk_over_limit'] = jerk_viols
+        info['acceleration_penalty'] = acc_pen
+        info['jerk_penalty'] = jerk_pen
         return obs, reward, done, info
 
     def log_site_vals(self):
@@ -654,7 +697,7 @@ class MujocoEnv(metaclass=EnvMeta):
         # if there is an active viewer window, destroy it
         # if self.viewer is not None:
         # self.viewer.close()  # change this to viewer.finish()?
-        #self.viewer = None
+        # self.viewer = None
         pass
 
     def close(self):
