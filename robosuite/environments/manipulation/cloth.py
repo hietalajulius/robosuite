@@ -245,7 +245,7 @@ class Cloth(SingleArmEnv):
 
         return reward, done, info
 
-    def _get_observation(self):
+    def _get_observation(self, force_update=False):
         achieved_goal = np.zeros(self.single_goal_dim*len(self.constraints))
         for i, constraint in enumerate(self.constraints):
             origin = constraint['origin']

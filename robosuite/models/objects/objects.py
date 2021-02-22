@@ -5,14 +5,17 @@ import xml.etree.ElementTree as ET
 import robosuite.utils.macros as macros
 from robosuite.models.base import MujocoXML, MujocoModel
 from robosuite.utils.mjcf_utils import string_to_array, array_to_string, CustomMaterial, OBJECT_COLLISION_COLOR,\
-                                       sort_elements, new_joint, add_prefix, add_material, find_elements
+    sort_elements, new_joint, add_prefix, add_material, find_elements
 
 
 # Dict mapping geom type string keywords to group number
 GEOMTYPE2GROUP = {
-    "collision": {0},                 # If we want to use a geom for physics, but NOT visualize
-    "visual": {1},                    # If we want to use a geom for visualization, but NOT physics
-    "all": {0, 1},                    # If we want to use a geom for BOTH physics + visualization
+    # If we want to use a geom for physics, but NOT visualize
+    "collision": {0},
+    # If we want to use a geom for visualization, but NOT physics
+    "visual": {1},
+    # If we want to use a geom for BOTH physics + visualization
+    "all": {0, 1},
 }
 
 GEOM_GROUPS = GEOMTYPE2GROUP.keys()
@@ -44,7 +47,8 @@ class MujocoObject(MujocoModel):
     def __init__(self, obj_type="all", duplicate_collision_geoms=True):
         super().__init__()
         self.asset = ET.Element("asset")
-        assert obj_type in GEOM_GROUPS, "object type must be one in {}, got: {} instead.".format(GEOM_GROUPS, obj_type)
+        assert obj_type in GEOM_GROUPS, "object type must be one in {}, got: {} instead.".format(
+            GEOM_GROUPS, obj_type)
         self.obj_type = obj_type
         self.duplicate_collision_geoms = duplicate_collision_geoms
 
@@ -72,6 +76,81 @@ class MujocoObject(MujocoModel):
             if find_elements(root=self.asset, tags=asset.tag,
                              attribs={"name": asset.get("name")}, return_first=True) is None:
                 self.asset.append(asset)
+
+    def get_obj(self):
+        """
+        Returns the generated / extracted object, in XML ElementTree form.
+
+        Returns:
+            ET.Element: Object in XML form.
+        """
+        assert self._obj is not None, "Object XML tree has not been generated yet!"
+        return self._obj
+
+    def exclude_from_prefixing(self, inp):
+        """
+        A function that should take in either an ET.Element or its attribute (str) and return either True or False,
+        determining whether the corresponding name / str to @inp should have naming_prefix added to it.
+        Must be defined by subclass.
+
+        Args:
+            inp (ET.Element or str): Element or its attribute to check for prefixing.
+
+        Returns:
+            bool: True if we should exclude the associated name(s) with @inp from being prefixed with naming_prefix
+        """
+        raise NotImplementedError
+
+    def _get_object_subtree(self):
+        """
+        Returns a ET.Element
+        It is a <body/> subtree that defines all collision and / or visualization related fields
+        of this object.
+        Return should be a copy.
+        Must be defined by subclass.
+
+        Returns:
+            ET.Element: body
+        """
+        raise NotImplementedError
+
+    def _get_object_properties(self):
+        """
+        Helper function to extract relevant object properties (bodies, joints, contact/visual geoms, etc...) from this
+        object's XML tree. Assumes the self._obj attribute has already been filled.
+        """
+        # Parse element tree to get all relevant bodies, joints, actuators, and geom groups
+        _elements = sort_elements(root=self.get_obj())
+        assert len(_elements["root_body"]) == 1, "Invalid number of root bodies found for robot model. Expected 1," \
+                                                 "got {}".format(
+                                                     len(_elements["root_body"]))
+        _elements["root_body"] = _elements["root_body"][0]
+        _elements["bodies"] = [_elements["root_body"]] + _elements["bodies"] if "bodies" in _elements else \
+                              [_elements["root_body"]]
+        self._root_body = _elements["root_body"].get("name")
+        self._bodies = [e.get("name") for e in _elements.get("bodies", [])]
+        self._joints = [e.get("name") for e in _elements.get("joints", [])]
+        self._actuators = [e.get("name")
+                           for e in _elements.get("actuators", [])]
+        self._sites = [e.get("name") for e in _elements.get("sites", [])]
+        self._sensors = [e.get("name") for e in _elements.get("sensors", [])]
+        self._contact_geoms = [e.get("name")
+                               for e in _elements.get("contact_geoms", [])]
+        self._visual_geoms = [e.get("name")
+                              for e in _elements.get("visual_geoms", [])]
+
+        # Add default materials if we're using domain randomization
+        if macros.USING_INSTANCE_RANDOMIZATION:
+            tex_element, mat_element, _, used = add_material(
+                root=self.get_obj(), naming_prefix=self.naming_prefix)
+            # Only add the material / texture if they were actually used
+            if used:
+                self.asset.append(tex_element)
+                self.asset.append(mat_element)
+
+        # Add prefix to all elements
+        add_prefix(root=self.get_obj(), prefix=self.naming_prefix,
+                   exclude=self.exclude_from_prefixing)
 
     @property
     def name(self):
@@ -139,16 +218,6 @@ class MujocoObject(MujocoModel):
         """
         return {}
 
-    def get_obj(self):
-        """
-        Returns the generated / extracted object, in XML ElementTree form.
-
-        Returns:
-            ET.Element: Object in XML form.
-        """
-        assert self._obj is not None, "Object XML tree has not been generated yet!"
-        return self._obj
-
     @property
     def bottom_offset(self):
         """
@@ -185,66 +254,6 @@ class MujocoObject(MujocoModel):
             float: radius
         """
         raise NotImplementedError
-
-    def exclude_from_prefixing(self, inp):
-        """
-        A function that should take in either an ET.Element or its attribute (str) and return either True or False,
-        determining whether the corresponding name / str to @inp should have naming_prefix added to it.
-        Must be defined by subclass.
-
-        Args:
-            inp (ET.Element or str): Element or its attribute to check for prefixing.
-
-        Returns:
-            bool: True if we should exclude the associated name(s) with @inp from being prefixed with naming_prefix
-        """
-        raise NotImplementedError
-
-    def _get_object_subtree(self):
-
-        """
-        Returns a ET.Element
-        It is a <body/> subtree that defines all collision and / or visualization related fields
-        of this object.
-        Return should be a copy.
-        Must be defined by subclass.
-
-        Returns:
-            ET.Element: body
-        """
-        raise NotImplementedError
-
-    def _get_object_properties(self):
-        """
-        Helper function to extract relevant object properties (bodies, joints, contact/visual geoms, etc...) from this
-        object's XML tree. Assumes the self._obj attribute has already been filled.
-        """
-        # Parse element tree to get all relevant bodies, joints, actuators, and geom groups
-        _elements = sort_elements(root=self.get_obj())
-        assert len(_elements["root_body"]) == 1, "Invalid number of root bodies found for robot model. Expected 1," \
-                                                 "got {}".format(len(_elements["root_body"]))
-        _elements["root_body"] = _elements["root_body"][0]
-        _elements["bodies"] = [_elements["root_body"]] + _elements["bodies"] if "bodies" in _elements else \
-                              [_elements["root_body"]]
-        self._root_body = _elements["root_body"].get("name")
-        self._bodies = [e.get("name") for e in _elements.get("bodies", [])]
-        self._joints = [e.get("name") for e in _elements.get("joints", [])]
-        self._actuators = [e.get("name") for e in _elements.get("actuators", [])]
-        self._sites = [e.get("name") for e in _elements.get("sites", [])]
-        self._sensors = [e.get("name") for e in _elements.get("sensors", [])]
-        self._contact_geoms = [e.get("name") for e in _elements.get("contact_geoms", [])]
-        self._visual_geoms = [e.get("name") for e in _elements.get("visual_geoms", [])]
-
-        # Add default materials if we're using domain randomization
-        if macros.USING_INSTANCE_RANDOMIZATION:
-            tex_element, mat_element, _, used = add_material(root=self.get_obj(), naming_prefix=self.naming_prefix)
-            # Only add the material / texture if they were actually used
-            if used:
-                self.asset.append(tex_element)
-                self.asset.append(mat_element)
-
-        # Add prefix to all elements
-        add_prefix(root=self.get_obj(), prefix=self.naming_prefix, exclude=self.exclude_from_prefixing)
 
     @staticmethod
     def get_site_attrib_template():
@@ -303,7 +312,8 @@ class MujocoXMLObject(MujocoObject, MujocoXML):
     def __init__(self, fname, name, joints="default", obj_type="all", duplicate_collision_geoms=True):
         MujocoXML.__init__(self, fname)
         # Set obj type and duplicate args
-        assert obj_type in GEOM_GROUPS, "object type must be one in {}, got: {} instead.".format(GEOM_GROUPS, obj_type)
+        assert obj_type in GEOM_GROUPS, "object type must be one in {}, got: {} instead.".format(
+            GEOM_GROUPS, obj_type)
         self.obj_type = obj_type
         self.duplicate_collision_geoms = duplicate_collision_geoms
 
@@ -312,7 +322,8 @@ class MujocoXMLObject(MujocoObject, MujocoXML):
 
         # joints for this object
         if joints == "default":
-            self.joint_specs = [self.get_joint_attrib_template()]  # default free joint
+            # default free joint
+            self.joint_specs = [self.get_joint_attrib_template()]
         elif joints is None:
             self.joint_specs = []
         else:
@@ -354,9 +365,11 @@ class MujocoXMLObject(MujocoObject, MujocoXML):
                 element.set("name", g_name)
                 # Also optionally duplicate collision geoms if requested (and this is a collision geom)
                 if self.duplicate_collision_geoms and element.get("group") in {None, "0"}:
-                    parent.append(self._duplicate_visual_from_collision(element))
+                    parent.append(
+                        self._duplicate_visual_from_collision(element))
                     # Also manually set the visual appearances to the original collision model
-                    element.set("rgba", array_to_string(OBJECT_COLLISION_COLOR))
+                    element.set("rgba", array_to_string(
+                        OBJECT_COLLISION_COLOR))
                     if element.get("material") is not None:
                         del element.attrib["material"]
         # add joint(s)
@@ -370,20 +383,19 @@ class MujocoXMLObject(MujocoObject, MujocoXML):
 
         return obj
 
+    def exclude_from_prefixing(self, inp):
+        """
+        By default, don't exclude any from being prefixed
+        """
+        return False
+
     def _get_object_properties(self):
         """
         Extends the base class method to also add prefixes to all bodies in this object
         """
         super()._get_object_properties()
-        add_prefix(root=self.root, prefix=self.naming_prefix, exclude=self.exclude_from_prefixing)
-
-    def exclude_from_prefixing(self, inp):
-        """
-        By default, don't exclude any from being prefixed
-        """
-        if inp is None:
-            return True
-        return False
+        add_prefix(root=self.root, prefix=self.naming_prefix,
+                   exclude=self.exclude_from_prefixing)
 
     @staticmethod
     def _duplicate_visual_from_collision(element):
@@ -433,18 +445,21 @@ class MujocoXMLObject(MujocoObject, MujocoXML):
 
     @property
     def bottom_offset(self):
-        bottom_site = self.worldbody.find("./body/site[@name='{}bottom_site']".format(self.naming_prefix))
+        bottom_site = self.worldbody.find(
+            "./body/site[@name='{}bottom_site']".format(self.naming_prefix))
         return string_to_array(bottom_site.get("pos"))
 
     @property
     def top_offset(self):
-        top_site = self.worldbody.find("./body/site[@name='{}top_site']".format(self.naming_prefix))
+        top_site = self.worldbody.find(
+            "./body/site[@name='{}top_site']".format(self.naming_prefix))
         return string_to_array(top_site.get("pos"))
 
     @property
     def horizontal_radius(self):
         horizontal_radius_site = self.worldbody.find(
-            "./body/site[@name='{}horizontal_radius_site']".format(self.naming_prefix)
+            "./body/site[@name='{}horizontal_radius_site']".format(
+                self.naming_prefix)
         )
         return string_to_array(horizontal_radius_site.get("pos"))[0]
 
@@ -518,14 +533,17 @@ class MujocoGeneratedObject(MujocoObject):
             self.asset = ET.Element("asset")
         # If the material name is not in shared materials, add this to our assets
         if material.name not in self.shared_materials:
-            self.asset.append(ET.Element("texture", attrib=material.tex_attrib))
-            self.asset.append(ET.Element("material", attrib=material.mat_attrib))
+            self.asset.append(ET.Element(
+                "texture", attrib=material.tex_attrib))
+            self.asset.append(ET.Element(
+                "material", attrib=material.mat_attrib))
         # Add this material name to shared materials if it should be shared
         if material.shared:
             self.shared_materials.add(material.name)
             self.shared_textures.add(material.tex_attrib["name"])
         # Update prefix for assets
-        add_prefix(root=self.asset, prefix=self.naming_prefix, exclude=self.exclude_from_prefixing)
+        add_prefix(root=self.asset, prefix=self.naming_prefix,
+                   exclude=self.exclude_from_prefixing)
 
     def exclude_from_prefixing(self, inp):
         """
