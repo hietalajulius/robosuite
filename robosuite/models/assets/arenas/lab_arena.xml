@@ -32,7 +32,7 @@
 
         <body name="tabletop" pos="0 0 0">
             <geom name="la_tabla_col" type="box" pos="0 0 0" size="0.3 0.6 0.14" group="0" />
-            <geom name="la_tabla_vis" type="box" material="white" pos="0 0 0" size="0.3 0.6 0.14" group="1" />
+            <geom name="la_tabla_vis" type="box" rgba="1 1 1 0.1" pos="0 0 0" size="0.3 0.6 0.14" group="1" />
         </body>
         
         <!--
