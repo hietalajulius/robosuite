@@ -1,35 +1,25 @@
-from collections import OrderedDict
-import random
-import numpy as np
-
-import robosuite.utils.transform_utils as T
-from robosuite.environments.manipulation.single_arm_env import SingleArmEnv
-
-from robosuite.models.arenas import BinsArena, EmptyArena, LabArena, TableArena
+import copy
+from gym import utils
+from gym.utils import seeding
+import cv2
+import mujoco_py
+import gym
+from gym.envs.robotics import reward_calculation
+from robosuite.utils.observables import Observable, sensor
+from robosuite.utils.placement_samplers import SequentialCompositeSampler, UniformRandomSampler
+from robosuite.models.tasks import ManipulationTask
 from robosuite.models.objects import (
     MilkObject,
     BreadObject,
     CerealObject,
     CanObject,
 )
-from robosuite.models.objects import (
-    MilkVisualObject,
-    BreadVisualObject,
-    CerealVisualObject,
-    CanVisualObject,
-)
-from robosuite.models.tasks import ManipulationTask
-from robosuite.utils.placement_samplers import SequentialCompositeSampler, UniformRandomSampler
-from robosuite.utils.observables import Observable, sensor
-
-from gym.envs.robotics import reward_calculation
-import gym
-import mujoco_py
-import cv2
-from gym.utils import seeding
-
-from gym import utils
-import copy
+from robosuite.models.arenas import BinsArena, EmptyArena, LabArena, TableArena
+from robosuite.environments.manipulation.single_arm_env import SingleArmEnv
+import robosuite.utils.transform_utils as T
+from collections import OrderedDict
+import random
+import numpy as np
 
 
 class Cloth(SingleArmEnv):
@@ -230,13 +220,6 @@ class Cloth(SingleArmEnv):
         done = not reward < 0
 
         info = {"task_reward": reward,
-                "velocity_penalty": 0.0,
-                "position_penalty": 0.0,
-                "acceleration_penalty": 0.0,
-                "velocity_over_limit": 0.0,
-                "position_over_limit": 0.0,
-                "acceleration_over_limit": 0,
-                "control_penalty": 0.0,
                 'is_success': done}
 
         if done:

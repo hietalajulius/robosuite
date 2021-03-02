@@ -10,6 +10,7 @@ from robosuite.controllers import controller_factory, load_controller_config
 from robosuite.robots.manipulator import Manipulator
 from robosuite.utils.buffers import DeltaBuffer, RingBuffer
 from robosuite.utils.observables import Observable, sensor
+import robosuite.utils.macros as macros
 
 import os
 import copy
@@ -88,8 +89,7 @@ class SingleArm(Manipulator):
         # xml element id for eef cylinder in mjsim
         self.eef_cylinder_id = None
         # Current torques being applied
-        self.torques = None
-
+        self.torques = np.zeros(7)
         # Current and last forces / torques sensed at eef
         self.recent_ee_forcetorques = None
         # Current and last eef pose (pos + ori (quat))
@@ -109,6 +109,8 @@ class SingleArm(Manipulator):
             mount_type=mount_type,
             control_freq=control_freq,
         )
+
+        self.delta_tau_max_ = 1000 * macros.SIMULATION_TIMESTEP
 
     def _load_controller(self):
         """
@@ -198,7 +200,7 @@ class SingleArm(Manipulator):
             if self.has_gripper:
                 pass
                 # TODO: allow setting gripper
-                #self.sim.data.qpos[self._ref_gripper_joint_pos_indexes] = self.gripper.init_qpos
+                # self.sim.data.qpos[self._ref_gripper_joint_pos_indexes] = self.gripper.init_qpos
 
         # Update base pos / ori references in controller
         self.controller.update_base_pose(self.base_pos, self.base_ori)
@@ -224,7 +226,7 @@ class SingleArm(Manipulator):
         if self.has_gripper:
             # self.gripper_joints = [self.gripper.joints[1], self.gripper.joints[2]]  # TODO: fix dummy
             self.gripper_joints = list(self.gripper.joints)
-            #print("Gripper JONES", self.gripper_joints)
+            # print("Gripper JONES", self.gripper_joints)
             self._ref_gripper_joint_pos_indexes = [
                 self.sim.model.get_joint_qpos_addr(x) for x in self.gripper_joints
             ]
@@ -274,9 +276,6 @@ class SingleArm(Manipulator):
 
         # Update the controller goal if this is a new policy step
         if policy_step:
-            #print("Policy step")
-            #override = np.zeros(7)
-            #self.controller.set_goal(arm_action, set_qpos=arm_action)
             self.controller.set_goal(arm_action)
 
         # Now run the controller for a step
@@ -284,7 +283,16 @@ class SingleArm(Manipulator):
 
         # Clip the torques
         low, high = self.torque_limits
-        self.torques = np.clip(torques, low, high)
+
+        torque_differences = np.clip(torques, low, high) - self.torques
+        clipped_differences = np.clip(
+            torque_differences, -self.delta_tau_max_, self.delta_tau_max_)
+
+        saturated_torques = self.torques + clipped_differences
+
+        clipped_torques = np.clip(saturated_torques, low, high)
+
+        self.torques = clipped_torques
 
         # Get gripper action, if applicable
         if self.has_gripper:

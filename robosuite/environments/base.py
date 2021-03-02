@@ -157,10 +157,13 @@ class MujocoEnv(metaclass=EnvMeta):
 
         self.prev_joint_vel = np.zeros(7)
         self.prev_joint_acc = np.zeros(7)
+        self.prev_joint_torque = self.sim.data.ctrl[self.robots[0]._ref_joint_actuator_indexes].copy(
+        )
 
         self.joint_acc_limits = np.array([15, 7.5, 10, 12.5, 15, 20, 20])
         self.joint_jerk_limits = np.array(
             [7500, 3750, 5000, 6250, 7500, 10000, 10000])
+        self.joint_torque_rate_limits = np.ones(7)*1000
 
     def initialize_time(self, control_freq):
         """
@@ -248,6 +251,8 @@ class MujocoEnv(metaclass=EnvMeta):
         # Use hard reset if requested
         self.prev_joint_vel = np.zeros(7)
         self.prev_joint_acc = np.zeros(7)
+        self.prev_joint_torque = self.sim.data.ctrl[self.robots[0]._ref_joint_actuator_indexes].copy(
+        )
 
         if self.hard_reset and not self.deterministic_reset:
             self._destroy_viewer()
@@ -401,6 +406,16 @@ class MujocoEnv(metaclass=EnvMeta):
 
         self.timestep += 1
 
+        error_distance = np.linalg.norm(
+            self.robots[0].controller.goal_pos - self.robots[0].controller.ee_pos)
+
+        current_ee_pos = self.robots[0].controller.ee_pos
+        current_ee_goal = self.robots[0].controller.goal_pos
+
+        substep_errors = []
+        substep_positions = []
+        substep_goals = []
+
         # Since the env.step frequency is slower than the mjsim timestep frequency, the internal controller will output
         # multiple torque commands in between new high level action commands. Therefore, we need to denote via
         # 'policy_step' whether the current step we're taking is simply an internal update of the controller,
@@ -413,7 +428,17 @@ class MujocoEnv(metaclass=EnvMeta):
         acc_pen = 0
         jerk_viols = 0
         jerk_pen = 0
-        for i in range(int(self.control_timestep / self.model_timestep)):
+        torque_rate_viols = 0
+        torque_rate_pen = 0
+
+        substeps = int(self.control_timestep / self.model_timestep)
+        for i in range(substeps):
+
+            substep_errors.append(np.linalg.norm(
+                self.robots[0].controller.goal_pos - self.robots[0].controller.ee_pos))
+            substep_goals.append(self.robots[0].controller.goal_pos)
+            substep_positions.append(self.robots[0].controller.ee_pos)
+
             self.sim.forward()
 
             current_vel = self.robots[0].controller.joint_vel.copy()
@@ -422,39 +447,69 @@ class MujocoEnv(metaclass=EnvMeta):
             current_jerk = (current_acc - self.prev_joint_acc) / \
                 self.model_timestep
 
+            current_torque = self.sim.data.ctrl[self.robots[0]._ref_joint_actuator_indexes].copy(
+            )
+
+            current_torque_rate = (
+                self.prev_joint_torque - current_torque) / self.model_timestep
+
             self.prev_joint_vel = current_vel
             self.prev_joint_acc = current_acc
+            self.prev_joint_torque = current_torque
 
-            acc_over = current_acc < self.joint_acc_limits
-            jerk_over = current_jerk < self.joint_jerk_limits
-            acc_ok = np.all(acc_over)
-            jerk_ok = np.all(jerk_over)
+            acc_below = np.abs(current_acc) < self.joint_acc_limits
+            jerk_below = np.abs(current_jerk) < self.joint_jerk_limits
+            torque_rate_below = np.abs(
+                current_torque_rate) < self.joint_torque_rate_limits
+
+            acc_ok = np.all(acc_below)
+            jerk_ok = np.all(jerk_below)
+            torque_rate_ok = np.all(torque_rate_below)
 
             if not acc_ok:
                 acc_pen += np.max(np.abs(self.joint_acc_limits -
                                          np.abs(current_acc)))
                 acc_viols += 1
+
             if not jerk_ok:
                 jerk_pen += np.max(np.abs(self.joint_jerk_limits -
                                           np.abs(current_jerk)))
                 jerk_viols += 1
 
+            if not torque_rate_ok:
+                torque_rate_pen += np.max(np.abs(self.joint_torque_rate_limits -
+                                                 np.abs(current_torque_rate)))
+                torque_rate_viols += 1
+
             self._pre_action(action, policy_step)
+
             self.sim.step()
             self._update_observables()
             policy_step = False
-        # self.log_joint_vals()
-        # self.log_site_vals()
 
         # Note: this is done all at once to avoid floating point inaccuracies
         self.cur_time += self.control_timestep
         obs = self._get_observation()
         reward, done, info = self._post_action(action, obs)
 
-        info['acceleration_over_limit'] = acc_viols
-        info['jerk_over_limit'] = jerk_viols
-        info['acceleration_penalty'] = acc_pen
-        info['jerk_penalty'] = jerk_pen
+        info['error_distance'] = error_distance
+        info['ee_pos'] = current_ee_pos
+        info['ee_goal'] = current_ee_goal
+
+        info['substep_errors'] = substep_errors
+        info['substep_positions'] = substep_positions
+        info['substep_goals'] = substep_goals
+
+        info['acceleration_over_limit'] = acc_viols / substeps
+        info['acceleration_penalty'] = acc_pen / substeps
+
+        info['jerk_over_limit'] = jerk_viols / substeps
+        info['jerk_penalty'] = jerk_pen / substeps
+
+        info['torque_rate_over_limit'] = torque_rate_viols / substeps
+        info['torque_rate_penalty'] = torque_rate_pen / substeps
+
+        info['control_penalty'] = 0.0
         return obs, reward, done, info
 
     def log_site_vals(self):

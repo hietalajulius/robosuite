@@ -74,7 +74,7 @@
         <site name="target1" pos="0 0 0.4" size="0.005 0.005 0.005" rgba="0 0 1 1" type="sphere"></site> -->
 
         <!-- front view -->
-        <camera mode="fixed" name="frontview" pos="1 0 0.7" quat="0.56 0.43 0.43 0.56"/>
+        <camera mode="fixed" name="frontview" pos="0.35 -0.1 0.25" quat="0.56 0.43 0.43 0.56"/>
         <!--cloth view -->
         <camera mode="fixed" name="clothview" pos="0.21 -0.12 0.35" quat="0.653 0.271 0.271 0.653"/>
         <!--cloth view 2 -->
@@ -84,7 +84,9 @@
         <!-- agent view -->
         <camera mode="fixed" name="agentview" pos="0.5 0 1.35" quat="0.653 0.271 0.271 0.653"/>
         <!-- side view -->
-        <camera name="sideview" pos="0.1 0.4 0.4" quat="0.2 0 0.5912228352893879 0.806418094001364" />
+        <camera name="sideview" pos="0.1 0.2 0.3" quat="0.2 0 0.5 0.75" />
+        <camera mode="fixed" name="eye_in_hand" pos="0.05 0 0" quat="0 0.707108 0.707108 0" fovy="75"/>
+        <camera mode="fixed" name="robotview" pos="1.0 0 0.4" quat="0.653 0.271 0.271 0.653"/>
 
     </worldbody>
 
