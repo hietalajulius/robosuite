@@ -155,10 +155,7 @@ class MujocoEnv(metaclass=EnvMeta):
         # Load observables
         self._observables = self._setup_observables()
 
-        self.prev_joint_vel = np.zeros(7)
-        self.prev_joint_acc = np.zeros(7)
-        self.prev_joint_torque = self.sim.data.ctrl[self.robots[0]._ref_joint_actuator_indexes].copy(
-        )
+        self.prev_joint_torque = None
 
         self.joint_acc_limits = np.array([15, 7.5, 10, 12.5, 15, 20, 20])
         self.joint_jerk_limits = np.array(
@@ -249,10 +246,7 @@ class MujocoEnv(metaclass=EnvMeta):
         """
         # TODO(yukez): investigate black screen of death
         # Use hard reset if requested
-        self.prev_joint_vel = np.zeros(7)
-        self.prev_joint_acc = np.zeros(7)
-        self.prev_joint_torque = self.sim.data.ctrl[self.robots[0]._ref_joint_actuator_indexes].copy(
-        )
+        self.prev_joint_torque = None
 
         if self.hard_reset and not self.deterministic_reset:
             self._destroy_viewer()
@@ -406,15 +400,7 @@ class MujocoEnv(metaclass=EnvMeta):
 
         self.timestep += 1
 
-        error_distance = np.linalg.norm(
-            self.robots[0].controller.goal_pos - self.robots[0].controller.ee_pos)
-
-        current_ee_pos = self.robots[0].controller.ee_pos
-        current_ee_goal = self.robots[0].controller.goal_pos
-
-        substep_errors = []
-        substep_positions = []
-        substep_goals = []
+        torque_rate_clips = 0
 
         # Since the env.step frequency is slower than the mjsim timestep frequency, the internal controller will output
         # multiple torque commands in between new high level action commands. Therefore, we need to denote via
@@ -424,92 +410,49 @@ class MujocoEnv(metaclass=EnvMeta):
 
         # Loop through the simulation at the model timestep rate until we're ready to take the next policy step
         # (as defined by the control frequency specified at the environment level)
-        acc_viols = 0
-        acc_pen = 0
-        jerk_viols = 0
-        jerk_pen = 0
-        torque_rate_viols = 0
-        torque_rate_pen = 0
 
         substeps = int(self.control_timestep / self.model_timestep)
         for i in range(substeps):
-
-            substep_errors.append(np.linalg.norm(
-                self.robots[0].controller.goal_pos - self.robots[0].controller.ee_pos))
-            substep_goals.append(self.robots[0].controller.goal_pos)
-            substep_positions.append(self.robots[0].controller.ee_pos)
-
             self.sim.forward()
-
-            current_vel = self.robots[0].controller.joint_vel.copy()
-            current_acc = (current_vel - self.prev_joint_vel) / \
-                self.model_timestep
-            current_jerk = (current_acc - self.prev_joint_acc) / \
-                self.model_timestep
 
             current_torque = self.sim.data.ctrl[self.robots[0]._ref_joint_actuator_indexes].copy(
             )
 
-            current_torque_rate = (
-                self.prev_joint_torque - current_torque) / self.model_timestep
+            if not self.prev_joint_torque is None:
+                current_torque_rate = (
+                    self.prev_joint_torque - current_torque) / self.model_timestep
+            else:
+                # First step in episode
+                current_torque_rate = np.zeros(7)
 
-            self.prev_joint_vel = current_vel
-            self.prev_joint_acc = current_acc
             self.prev_joint_torque = current_torque
 
-            acc_below = np.abs(current_acc) < self.joint_acc_limits
-            jerk_below = np.abs(current_jerk) < self.joint_jerk_limits
             torque_rate_below = np.abs(
                 current_torque_rate) < self.joint_torque_rate_limits
 
-            acc_ok = np.all(acc_below)
-            jerk_ok = np.all(jerk_below)
             torque_rate_ok = np.all(torque_rate_below)
 
-            if not acc_ok:
-                acc_pen += np.max(np.abs(self.joint_acc_limits -
-                                         np.abs(current_acc)))
-                acc_viols += 1
-
-            if not jerk_ok:
-                jerk_pen += np.max(np.abs(self.joint_jerk_limits -
-                                          np.abs(current_jerk)))
-                jerk_viols += 1
-
             if not torque_rate_ok:
-                torque_rate_pen += np.max(np.abs(self.joint_torque_rate_limits -
-                                                 np.abs(current_torque_rate)))
-                torque_rate_viols += 1
+                torque_rate_clips += 1
 
             self._pre_action(action, policy_step)
-
             self.sim.step()
             self._update_observables()
+
             policy_step = False
+
+        error_norm = np.linalg.norm(
+            self.robots[0].controller.goal_pos - self.robots[0].controller.ee_pos)
 
         # Note: this is done all at once to avoid floating point inaccuracies
         self.cur_time += self.control_timestep
         obs = self._get_observation()
         reward, done, info = self._post_action(action, obs)
 
-        info['error_distance'] = error_distance
-        info['ee_pos'] = current_ee_pos
-        info['ee_goal'] = current_ee_goal
+        info['squared_error_norm'] = error_norm**2
+        info['torque_rate_clips'] = torque_rate_clips / substeps
+        info['control_penalty'] = 0.0  # TODO: potentially penalize for clips
 
-        info['substep_errors'] = substep_errors
-        info['substep_positions'] = substep_positions
-        info['substep_goals'] = substep_goals
-
-        info['acceleration_over_limit'] = acc_viols / substeps
-        info['acceleration_penalty'] = acc_pen / substeps
-
-        info['jerk_over_limit'] = jerk_viols / substeps
-        info['jerk_penalty'] = jerk_pen / substeps
-
-        info['torque_rate_over_limit'] = torque_rate_viols / substeps
-        info['torque_rate_penalty'] = torque_rate_pen / substeps
-
-        info['control_penalty'] = 0.0
         return obs, reward, done, info
 
     def log_site_vals(self):

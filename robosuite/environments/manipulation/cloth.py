@@ -37,6 +37,7 @@ class Cloth(SingleArmEnv):
         random_seed,
         velocity_in_obs,
         image_size,
+        constant_goal,
         env_configuration="default",
         constraints=None,
         controller_configs=None,
@@ -98,6 +99,8 @@ class Cloth(SingleArmEnv):
         self.randomize_geoms = randomize_geoms
         self.randomize_params = randomize_params
         self.uniform_jnt_tend = uniform_jnt_tend
+
+        self.constant_goal = constant_goal
 
         self.min_damping = 0.00001  # TODO: pass ranges in from outside
         self.max_damping = 0.02
@@ -172,7 +175,8 @@ class Cloth(SingleArmEnv):
             if "G" in geom_name:
                 geom_id = self.sim.model.geom_name2id(geom_name)
                 self.sim.model.geom_size[geom_id] = self.current_geom_size * \
-                    (1 + np.random.randn()*0.01)  # TODO: Figure out if this makes sense
+                    (1 + self.np_random.randn() *
+                     0.01)  # TODO: Figure out if this makes sense
 
         self.sim.forward()
 
@@ -357,8 +361,13 @@ class Cloth(SingleArmEnv):
 
     def _sample_goal(self):
         goal = np.zeros(self.single_goal_dim*len(self.constraints))
-        noise = np.random.uniform(self.goal_noise_range[0],
-                                  self.goal_noise_range[1])
+
+        if not self.constant_goal:
+            noise = self.np_random.uniform(self.goal_noise_range[0],
+                                           self.goal_noise_range[1])
+        else:
+            noise = 0
+
         for i, constraint in enumerate(self.constraints):
             target = constraint['target']
             target_pos = self.sim.data.get_site_xpos(

@@ -89,7 +89,7 @@ class SingleArm(Manipulator):
         # xml element id for eef cylinder in mjsim
         self.eef_cylinder_id = None
         # Current torques being applied
-        self.torques = np.zeros(7)
+        self.torques = None
         # Current and last forces / torques sensed at eef
         self.recent_ee_forcetorques = None
         # Current and last eef pose (pos + ori (quat))
@@ -194,6 +194,8 @@ class SingleArm(Manipulator):
         # First, run the superclass method to reset the position and controller
         super().reset(deterministic)
 
+        self.torques = None
+
         if not deterministic:
             # Now, reset the gripper if necessary
 
@@ -284,13 +286,18 @@ class SingleArm(Manipulator):
         # Clip the torques
         low, high = self.torque_limits
 
-        torque_differences = np.clip(torques, low, high) - self.torques
-        clipped_differences = np.clip(
-            torque_differences, -self.delta_tau_max_, self.delta_tau_max_)
+        bounded_torques = np.clip(torques, low, high)
 
-        saturated_torques = self.torques + clipped_differences
+        if not self.torques is None:
+            torque_differences = bounded_torques - self.torques
+            clipped_differences = np.clip(
+                torque_differences, -self.delta_tau_max_, self.delta_tau_max_)
 
-        clipped_torques = np.clip(saturated_torques, low, high)
+            saturated_torques = self.torques + clipped_differences
+
+            clipped_torques = np.clip(saturated_torques, low, high)
+        else:
+            clipped_torques = bounded_torques
 
         self.torques = clipped_torques
 

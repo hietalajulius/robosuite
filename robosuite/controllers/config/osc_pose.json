@@ -7,7 +7,7 @@
   "kp": 150,
   "damping_ratio": 1,
   "impedance_mode": "fixed",
-  "kp_limits": [0, 300],
+  "kp_limits": [0, 1000],
   "damping_ratio_limits": [0, 10],
   "position_limits": null,
   "orientation_limits": null,

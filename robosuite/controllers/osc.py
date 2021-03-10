@@ -11,6 +11,15 @@ IMPEDANCE_MODES = {"fixed", "variable", "variable_kp"}
 # TODO: Maybe better naming scheme to differentiate between input / output min / max and pos/ori limits, etc.
 
 
+def matprint(mat, fmt="g"):
+    col_maxes = [max([len(("{:"+fmt+"}").format(x))
+                      for x in col]) for col in mat.T]
+    for x in mat:
+        for i, y in enumerate(x):
+            print(("{:"+str(col_maxes[i])+fmt+"}").format(y), end="  ")
+        print("")
+
+
 class OperationalSpaceController(Controller):
     """
     Controller for controlling robot arm via operational space control. Allows position and / or orientation control
@@ -199,6 +208,10 @@ class OperationalSpaceController(Controller):
         self.relative_ori = np.zeros(3)
         self.ori_ref = None
 
+        self.current_desired_pos = self.ee_pos
+        self.current_interp_start = self.ee_pos
+        self.current_interp_end = self.ee_pos
+
     def set_goal(self, action, set_pos=None, set_ori=None):
         """
         Sets goal based on input @action. If self.impedance_mode is not "fixed", then the input will be parsed into the
@@ -253,6 +266,9 @@ class OperationalSpaceController(Controller):
             # No scaling of values since these are absolute values
             scaled_delta = delta
 
+        # TODO: remove manual hack
+        set_ori = None
+
         # We only want to update goal orientation if there is a valid delta ori value OR if we're using absolute ori
         # use math.isclose instead of numpy because numpy is slow
         bools = [0. if math.isclose(
@@ -268,7 +284,9 @@ class OperationalSpaceController(Controller):
                                           set_pos=set_pos)
 
         if self.interpolator_pos is not None:
-            self.interpolator_pos.set_goal(self.goal_pos)
+            self.interpolator_pos.set_goal(self.goal_pos, self.ee_pos)
+            self.current_interp_start = self.interpolator_pos.start
+            self.current_interp_end = self.interpolator_pos.goal
 
         if self.interpolator_ori is not None:
             # reference is the current orientation at start
@@ -359,6 +377,8 @@ class OperationalSpaceController(Controller):
         # Always run superclass call for any cleanups at the end
         super().run_controller()
 
+        self.current_desired_pos = desired_pos
+
         return self.torques
 
     def update_initial_joints(self, initial_joints):
@@ -375,10 +395,12 @@ class OperationalSpaceController(Controller):
         self.goal_ori = np.array(self.ee_ori_mat)
         self.goal_pos = np.array(self.ee_pos)
 
+        self.current_desired_pos = self.goal_pos
+
         # Also reset interpolators if required
 
         if self.interpolator_pos is not None:
-            self.interpolator_pos.set_goal(self.goal_pos)
+            self.interpolator_pos.set_goal(self.goal_pos, self.ee_pos)
 
         if self.interpolator_ori is not None:
             # reference is the current orientation at start

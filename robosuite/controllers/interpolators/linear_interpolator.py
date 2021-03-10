@@ -27,6 +27,7 @@ class LinearInterpolator(Interpolator):
                 `'euler'`: Euler orientation inputs
                 `'quat'`: Quaternion inputs
     """
+
     def __init__(self,
                  ndim,
                  controller_freq,
@@ -35,16 +36,22 @@ class LinearInterpolator(Interpolator):
                  use_delta_goal=False,
                  ori_interpolate=None,
                  ):
-        self.dim = ndim                                             # Number of dimensions to interpolate
-        self.ori_interpolate = ori_interpolate                      # Whether this is interpolating orientation or not
-        self.order = 1                                              # Order of the interpolator (1 = linear)
-        self.step = 0                                               # Current step of the interpolator
+        # Number of dimensions to interpolate
+        self.dim = ndim
+        # Whether this is interpolating orientation or not
+        self.ori_interpolate = ori_interpolate
+        # Order of the interpolator (1 = linear)
+        self.order = 1
+        # Current step of the interpolator
+        self.step = 1
         self.total_steps = \
-            np.ceil(ramp_ratio * controller_freq / policy_freq)     # Total num steps per interpolator action
-        self.use_delta_goal = use_delta_goal                        # Whether to use delta or absolute goals (currently
-                                                                    # not implemented yet- TODO)
-        self.set_states(dim=ndim, ori=ori_interpolate) 
-                                                
+            np.ceil(ramp_ratio * controller_freq /
+                    policy_freq)     # Total num steps per interpolator action
+        # Whether to use delta or absolute goals (currently
+        self.use_delta_goal = use_delta_goal
+        # not implemented yet- TODO)
+        self.set_states(dim=ndim, ori=ori_interpolate)
+
     def set_states(self, dim=None, ori=None):
         """
         Updates self.dim and self.ori_interpolate. 
@@ -72,6 +79,7 @@ class LinearInterpolator(Interpolator):
                 self.start = np.array((0, 0, 0, 1))
         else:
             self.start = np.zeros(self.dim)
+
         self.goal = np.array(self.start)
 
     def set_goal(self, goal, ee_position=None):
@@ -89,14 +97,14 @@ class LinearInterpolator(Interpolator):
 
         # Update start and goal
         if not ee_position is None:
-            #print("start from ee")
             self.start = ee_position
         else:
             self.start = np.array(self.goal)
+
         self.goal = np.array(goal)
 
         # Reset interpolation steps
-        self.step = 0
+        self.step = 1
 
     def get_interpolated_goal(self):
         """
@@ -126,11 +134,19 @@ class LinearInterpolator(Interpolator):
                 x_current = T.mat2euler(T.quat2mat(x_current))
         else:
             # This is a normal interpolation
-            dx = (self.goal - x) / (self.total_steps - self.step)
+            # Below is a bit funny, try with both
+            #dx = (self.goal - x) / (self.total_steps - self.step)
+
+            dx = ((self.goal - x)/self.total_steps)*self.step
+
+            #print("DX", dx, self.total_steps, self.step)
+
             x_current = x + dx
 
         # Increment step if there's still steps remaining based on ramp ratio
-        if self.step < self.total_steps - 1:
+
+        # TODO: might need further fixes, esp taking orientation stuff into account
+        if self.step < self.total_steps:
             self.step += 1
 
         # Return the new interpolated step
