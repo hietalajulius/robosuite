@@ -53,7 +53,7 @@
                     <joint kind="main" damping="0.001" stiffness="0.001" />
                     <tendon width="0.001" kind="shear" damping="0.001" stiffness="0.001" />
                     <!--<pin coord="0 0"/> -->
-                    <skin material="white_borders" texcoord="true" inflate="0.002" subgrid="2"/>
+                    <!--<skin material="white_borders" texcoord="true" inflate="0.002" subgrid="2"/> -->
                     <geom group="0" type="sphere" size="0.005" rgba=".8 .2 .1 1" friction='1.5 1.5 1.5' solref='0.01 1' solimp='0.99 0.99 0.01' condim='4' />
                 </composite>
             </body>
